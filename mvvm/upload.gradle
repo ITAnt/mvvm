@@ -1,0 +1,29 @@
+/*----------本地仓库----------*/
+apply plugin: 'maven'
+uploadArchives {
+    def repositoryDir = new File("E://maven/local/repository/")
+    if (!repositoryDir.exists()) {
+        repositoryDir.mkdirs()
+    }
+    repositories.mavenDeployer {
+        // 本地仓库路径
+        repository(url: "file://E://maven/local/repository/")
+        //repository(url: mavenLocal().getUrl())
+        pom.project {
+            // 唯一标识
+            groupId 'com.itant.base'
+            // 项目名称
+            artifactId 'mvp'
+            // 版本号
+            version '1.0.3'
+        }
+    }
+}
+//① gradlew uploadArchives
+//如果上传的module相互有依赖，有多少层就要执行多少次①，如C<B<A，则要先uploadArchives A，然后
+//B对A的引用由本地project引用改为已上传的A本地网络引用，再uploadArchives B，以此类推，如遇到本地
+//包不更新等问题，可能要删除module对应的build文件夹重试，且upload一次要本地run一次项目，否则会导致：
+//Duplicate class ... found in modules jetified-...jar and jetified-....jar
+//② 自定义：mavenLocal{url "file://E://maven/local/repository/" }默认：mavenLocal()
+//③ implementation 'com.itant.base:mvp:1.0.0'
+/*----------本地仓库----------*/

@@ -1,0 +1,31 @@
+<resources>
+    <dimen name="size_icon_big">32dp</dimen>
+    <dimen name="size_icon">20dp</dimen>
+
+    <dimen name="margin_default">16dp</dimen>
+    <dimen name="margin_s">8dp</dimen>
+    <dimen name="margin_ss">4dp</dimen>
+    <dimen name="margin_sss">2dp</dimen>
+
+    <dimen name="text_title">17sp</dimen>
+    <dimen name="text_sub_title">16sp</dimen>
+    <dimen name="text_normal_p">14.5sp</dimen>
+    <dimen name="text_normal">14sp</dimen>
+    <dimen name="text_normal_s">12.8sp</dimen>
+    <dimen name="text_s">12sp</dimen>
+
+    <dimen name="radius_default">4dp</dimen>
+    <dimen name="radius_indicator">1.5dp</dimen>
+    <dimen name="radius_s">2.5dp</dimen>
+
+    <dimen name="width_min_code">64dp</dimen>
+    <dimen name="height_tool_item">60dp</dimen>
+    <dimen name="height_item">56dp</dimen>
+    <dimen name="height_tab_bar">48dp</dimen>
+
+    <dimen name="height_indicator">3dp</dimen>
+    <dimen name="width_stroke">0.9dp</dimen>
+    <dimen name="height_divider_micro">1px</dimen>
+
+    <dimen name="width_indicator">25dp</dimen>
+</resources>

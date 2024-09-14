@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#fafafa</color>
+    <color name="colorPrimaryDark">#fafafa</color>
+    <color name="colorAccent">#fafafa</color>
+
+    <color name="white">#FFFFFF</color>
+    <color name="white_icon_light">#fbfbfb</color>
+    <color name="white_button">@color/gray_indicator</color>
+
+    <color name="black">#000000</color>
+    <color name="black_back">#444444</color>
+    <color name="black_icon">#545E60</color>
+
+    <color name="green_bright">#00e478</color>
+    <color name="green">#4CB050</color>
+    <color name="green_bg">#b5d8b7</color>
+    <color name="green_flag">#e8f6e9</color>
+
+    <color name="gray_text3">#afafaf</color>
+    <color name="gray_text2">#b5b5b5</color>
+    <color name="gray_text1">#D0D0D0</color>
+    <color name="gray_icon">#d8d8d8</color>
+    <color name="gray_bg">#F4F2F3</color>
+    <color name="gray_flag">#f5f5f5</color>
+    <color name="gray_indicator">#f8f8f8</color>
+
+    <color name="blue_dark">#100c2d</color>
+    <color name="blue_light">#565678</color>
+
+    <color name="yellow">#fed930</color>
+
+    <color name="green_what">#008069</color>
+    <color name="green_what_second">#00a884</color>
+    <color name="green_what_light">#d8fdd2</color>
+    <color name="white_what_text">#b4d9d2</color>
+    <color name="blue_what">#1ebea6</color>
+</resources>

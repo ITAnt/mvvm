@@ -1,0 +1,130 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+
+android {
+    compileSdkVersion Config.compileSdk
+    buildToolsVersion Config.buildTools
+
+    defaultConfig {
+        applicationId "com.miekir.mt"
+        minSdkVersion Config.minSdk
+        targetSdkVersion Config.targetSdk
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    // 签名文件
+    signingConfigs {
+        config {
+            v1SigningEnabled true
+            v2SigningEnabled true
+            keyAlias 'sz'
+            keyPassword 'away6899458'
+            storeFile file('commonkey')
+            storePassword 'away6899458'
+        }
+    }
+
+    // 正式版和调试版
+    buildTypes {
+        debug {
+            debuggable true
+            //minifyEnabled true
+            signingConfig signingConfigs.config
+            //buildConfigField("String", "BASE_URL", '"http://app.jianjie.life:11111/"')
+            buildConfigField("String", "BASE_URL", '"https://6a90d940-1c18-4f0f-a8dc-c4d94dce40c1.mock.pstmn.io/"')
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        release {
+            debuggable true
+            // 混淆代码
+            //minifyEnabled true
+            // 缩减资源
+            //shrinkResources true
+            signingConfig signingConfigs.config
+            buildConfigField("String", "BASE_URL", '"https://6a90d940-1c18-4f0f-a8dc-c4d94dce40c1.mock.pstmn.io/"')
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    // 设置apk文件名
+    android.applicationVariants.all { variant ->
+        variant.outputs.all {
+            outputFileName = "chinese_welfare_v${defaultConfig.versionName}.apk"
+            switch (variant.getName()) {
+                case "devDebug":
+                    outputFileName = "demo_dev_debug_v${defaultConfig.versionName}.apk"
+                    break
+                case "devRelease":
+                    outputFileName = "demo_dev_realease_v${defaultConfig.versionName}.apk"
+                    break
+                case "proDebug":
+                    outputFileName = "demo_pro_debug_v${defaultConfig.versionName}.apk"
+                    break
+                case "proRelease":
+                    outputFileName = "demo_pro_release_v${defaultConfig.versionName}.apk"
+                    break
+            }
+        }
+    }
+
+//    // 开发环境相关变量
+//    flavorDimensions "default"
+//    productFlavors {
+//        dev {
+//            // 开发环境
+//            dimension "default"
+//            buildConfigField("String", "BASE_URL", '"https://6a90d940-1c18-4f0f-a8dc-c4d94dce40c1.mock.pstmn.io/"')
+//        }
+//
+//        pro {
+//            // 正式环境
+//            dimension "default"
+//            buildConfigField("String", "BASE_URL", '"http://app.jianjie.life:11111/"')
+//        }
+//    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    // 开启ViewBinding
+//    viewBinding {
+//        enabled = true
+//    }
+    buildFeatures{
+        viewBinding = true
+    }
+
+    dataBinding {
+        enabled = true
+    }
+
+//    configurations.all {
+//        resolutionStrategy.force "junit:junit:${Config.test_junit}"
+//    }
+}
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+
+    testImplementation "junit:junit:${Config.test_junit}"
+    testImplementation "androidx.test.ext:junit:${Config.test_ext}"
+    testImplementation "androidx.test.espresso:espresso-core:${Config.test_espresso}"
+
+    // Glide加载图片
+    api 'com.github.bumptech.glide:glide:4.11.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+
+    implementation project(path: ':mvvm')
+    //implementation project(path: ':mvp-java')
+
+    // 调试过程中可以在通知栏查看详细的网络请求，OPPO手机Android11 debug不显示是因为需要手动打开通知权限
+    debugImplementation 'com.readystatesoftware.chuck:library:1.1.0'
+    releaseImplementation 'com.readystatesoftware.chuck:library-no-op:1.1.0'
+}

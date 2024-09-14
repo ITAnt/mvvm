@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <external-path
+        name="external_files"
+        path="." />
+</paths>
+<!--    参考：https://blog.csdn.net/wxz1179503422/article/details/84874171 -->
+<!--    root-path 对应DEVICE_ROOT,也就是File DEVICE_ROOT = new File("/")，即根目录，一般不需要配置。   / -->
+<!--    files-path对应 content.getFileDir() 获取到的目录。   /data/data/<包名>/files -->
+<!--    cache-path对应 content.getCacheDir() 获取到的目录    /data/data/<包名>/cache -->
+<!--    external-path对应 Environment.getExternalStorageDirectory() 指向的目录。    /storage/emulate/0-->
+<!--    external-files-path对应 ContextCompat.getExternalFilesDirs() 获取到的目录。  /storage/emulate/0/Android/data/<包名>/files -->
+<!--    external-cache-path对应 ContextCompat.getExternalCacheDirs() 获取到的目录。  /storage/emulate/0/Android/data/<包名>/cache -->

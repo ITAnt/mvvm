@@ -1,0 +1,241 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'kotlin-android-extensions'
+apply from: 'upload.gradle'
+
+android {
+    compileSdkVersion Config.compileSdk
+    buildToolsVersion Config.buildTools
+
+    defaultConfig {
+        minSdkVersion Config.minSdk
+        targetSdkVersion Config.targetSdk
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            //buildConfigField("boolean", "IS_DEBUG_MODE", "true")
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+
+        release {
+            minifyEnabled false
+            //buildConfigField("boolean", "IS_DEBUG_MODE", "false")
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+// module-Tasks-other-debugSourcesJar，生成的源码jar在D:\MiekirGit\APP\MvpGo\mvp\build\libs
+/*// 打包源码jar，默认生成路径：build/libs/*-sources.jar，然后查看aar源码时，Choose Sources选中这个jar就可以查看注释了
+task androidSourcesJar(type: Jar) {
+    // 如果有Kotlin那么就需要打入dir : getSrcDirs
+    if (project.hasProperty("kotlin")) {
+        println 'This is a Kotlin project'
+        from android.sourceSets.main.java.getSrcDirs()
+    } else if (project.hasProperty("android")) {
+        println 'This is a Java project'
+        from android.sourceSets.main.java.sourceFiles
+    } else {
+        println 'This is a project of Java & Kotlin'
+        from sourceSets.main.allSource
+    }
+    classifier = 'sources'
+}
+artifacts {
+    archives androidSourcesJar
+}
+
+// 删除旧的源码jar
+task deleteOldJar(type: Delete) {
+    delete 'libs/sources.jar'
+}
+deleteOldJar.dependsOn(androidSourcesJar)
+
+// 拷贝源码jar到libs目录以便随aar一起导出
+task exportJar(type: Copy) {
+    from('build/libs/')
+    into('libs/')
+    include('mvp-sources.jar')
+    rename ('mvp-sources.jar', 'sources.jar')
+}
+exportJar.dependsOn(deleteOldJar)
+
+// 必须依赖的任务（在打包aar之前先拷贝源码和注释到libs目录）
+project.tasks.whenTaskAdded { Task theTask ->
+    if (theTask.name == 'assembleRelease') {
+        theTask.dependsOn(exportJar)
+        theTask.mustRunAfter(exportJar)
+    }
+}*/
+
+afterEvaluate {
+    android.libraryVariants.all { variant ->
+        variant.variantData.outputFactory.apkDataList.each { apkData ->
+            // 自定义输出aar路径和名称
+            def rawFileName = apkData.outputFileName
+            println("file output:${rawFileName}")
+            // "release" == buildType.name &&
+            if (rawFileName.endsWith('.aar')) {
+                def createTime = new Date().format("yyyyMMddHH", TimeZone.getTimeZone("GMT+08:00"))
+                //def aarName = "mvp_${buildType.name}_${createTime}.aar"
+                def aarName = "mvvm.aar"
+                apkData.outputFileName = aarName
+
+                // 复制aar到指定目录
+                variant.assemble.doLast {
+                    variant.outputs.all { output ->
+                        File targetAarDir = new File("${project.rootDir.absolutePath}/out_aar/${buildType.name}")
+                        println("aar output:${targetAarDir}${File.separator}${output.outputFileName}")
+                        copy {
+                            from output.outputFile
+                            into targetAarDir.getAbsolutePath()
+                        }
+
+                        openTargetDir(targetAarDir.absolutePath)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 打开输出的aar目录
+def openTargetDir(String targetDir) {
+    if (targetDir != null) {
+        // 指定使用的操作系统对应的命令
+        if (System.properties['os.name'].toLowerCase().contains('windows')) {
+            exec {
+                commandLine 'explorer', targetDir
+                ignoreExitValue = true
+                //if(execResult.getExitValue() == 0)
+            }
+        } else if (System.properties['os.name'].toLowerCase().contains('mac os x')) {
+            exec {
+                commandLine 'open', targetDir
+                ignoreExitValue = true
+            }
+        } else {
+            exec {
+                commandLine 'xdg-open', targetDir
+                ignoreExitValue = true
+            }
+        }
+    }
+}
+
+dependencies {
+    api fileTree(dir: 'libs', include: ['*.jar','*.aar'])
+    compileOnly 'androidx.databinding:databinding-runtime:8.3.2'
+
+    testImplementation "junit:junit:${Config.test_junit}"
+    testImplementation "androidx.test.ext:junit:${Config.test_ext}"
+    testImplementation "androidx.test.espresso:espresso-core:${Config.test_espresso}"
+
+    // 可能要写成compileOnly，如果使用aar，则无论api还是compileOnly都是相当于compileOnly，如果做成在线引用，则可能会有冲突问题
+
+    // 使用 retrofit + rx + gson 实现网络请求与解析
+    def retrofit_version = '2.9.0'
+    api "com.squareup.retrofit2:retrofit:$retrofit_version"
+    // 打印网络请求日志框架
+    api "com.squareup.okhttp3:logging-interceptor:3.6.0"
+
+    // 衔接 retrofit 和 gson
+    api 'com.squareup.retrofit2:converter-gson:2.8.1'
+    api 'com.google.code.gson:gson:2.8.6'
+
+    //  衔接 retrofit 和 moshi
+    api "com.squareup.retrofit2:converter-moshi:$retrofit_version"
+
+    // 衔接 retrofit 和 rxjava
+    //api 'com.squareup.retrofit2:adapter-rxjava2:2.2.0'
+    // 此处一定要注意使用RxJava2的版本，和Retrofit配合
+    //api 'io.reactivex.rxjava2:rxjava:2.2.17'
+    //api 'io.reactivex.rxjava2:rxandroid:2.1.1'
+
+    // 通用设计
+    //api "androidx.appcompat:appcompat:${Config.google_appcompat}"
+    compileOnly "com.google.android.material:material:${Config.google_material}"
+    api "androidx.activity:activity:1.2.3"
+    api 'androidx.fragment:fragment:1.3.4'
+    // ViewBinding
+    api 'androidx.databinding:viewbinding:4.2.0@aar'
+
+    // kotlin
+    //api "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+    //api "androidx.core:core-ktx:${Config.ktx_core}"
+    api "androidx.lifecycle:lifecycle-extensions:${Config.androidLifecycle}"
+    api "androidx.lifecycle:lifecycle-viewmodel-ktx:${Config.androidLifecycle}"
+    api "androidx.lifecycle:lifecycle-livedata-ktx:${Config.androidLifecycle}"
+    api "androidx.lifecycle:lifecycle-runtime-ktx:${Config.androidLifecycle}"
+    api "androidx.preference:preference-ktx:1.1.1"
+
+    // MMKV代替Preference
+
+    //内存泄漏分析
+    //debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.7'
+
+    // Glide加载图片
+    //api 'com.github.bumptech.glide:glide:4.11.0'
+    //annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
+
+    // guava
+    //api "com.google.guava:guava:30.0-android"
+
+    // RecyclerView适配器
+    //api 'com.github.CymChad:BaseRecyclerViewAdapterHelper:2.9.50'
+    //api project(path: ':aar:adapter')
+    //api 'com.itant.aar:BaseRecyclerViewAdapterHelper:2.9.50'
+    //api 'com.github.CymChad:BaseRecyclerViewAdapterHelper:3.0.6'
+
+    // RecyclerView
+    // https://github.com/youlookwhat/ByRecyclerView
+    // implementation 'com.github.youlookwhat:ByRecyclerView:1.1.6'
+
+    // 日期选择器
+    //api 'com.contrarywind:Android-PickerView:4.1.9'
+    //api project(path: ':aar:wheelview')
+    //api 'com.itant.aar:wheelview:4.1.0'
+    //api project(path: ':aar:pickview')
+    //api 'com.itant.aar:Android-PickerView:4.1.9'
+
+    // 状态栏颜色https://github.com/gyf-dev/ImmersionBar
+    //api 'com.gyf.immersionbar:immersionbar:3.0.0'
+    //api project(path: ':aar:immerse')
+    //api 'com.itant.aar:immersionbar:3.0.0'
+
+    // 重试框架
+    //api "com.michael-bull.kotlin-retry:kotlin-retry:1.0.8"
+    //api project(path: ':aar:retry')
+    //api 'com.itant.aar:kotlin-retry:1.0.8'
+
+    // 强大的工具Utils
+    //api 'com.blankj:utilcodex:1.30.6'
+    //api project(path: ':aar:codex')
+    //api 'com.itant.aar:utilcodex:1.30.6'
+
+    // 屏幕适配JessYanCoding/AndroidAutoSize
+    //api 'me.jessyan:autosize:1.2.1'
+    //embed project(path: ':aar:autosize')
+    //api project(path: ':aar:autosize')
+    //api 'com.itant.aar:autosize:1.2.1'
+
+    // 动态权限申请rxpermission
+    //api 'com.github.tbruyelle:rxpermissions:0.11'
+    //embed project(path: ':aar:permission')
+    //api project(path: ':aar:permission')
+    //api 'com.itant.aar:rxpermissions:0.9.5'
+
+    api "androidx.startup:startup-runtime:1.1.1"
+}

@@ -1,0 +1,29 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="SplashTheme" parent="AppTheme">
+        <item name="windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+
+        <!--状态栏颜色-->
+        <!--<item name="android:statusBarColor">@color/gray_status_bar</item>-->
+        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+        <item name="android:windowActionBar">false</item>
+
+        <!--用下面这个属性代替windowIsTranslucent，否则在8.0上配合portrait属性会导致闪退-->
+        <item name="android:windowDisablePreview">true</item>
+        <!--<item name="android:windowFullscreen">true</item>-->
+
+        <!--改变下面这个颜色可以改变返回按钮的颜色-->
+        <!--<item name="android:textColorSecondary">@color/black_theme</item>-->
+
+        <!--解决全屏的时候底部content和导航栏之间有一根白线的现象-->
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+</resources>

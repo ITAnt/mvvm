@@ -181,7 +181,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
     /**
      * 申请权限扩展
      */
-    fun requestPermissionsForResult(permissions: MutableList<String>, callback: ((granted: Boolean, temp: Boolean, detail : Map<String, Boolean>) -> Unit)? = null) {
+    fun requestPermissionsForResult(permissions: List<String>, callback: ((granted: Boolean, temp: Boolean, detail : Map<String, Boolean>) -> Unit)? = null) {
         if (permissions.isEmpty()) {
             callback?.invoke(true, false, hashMapOf())
             return

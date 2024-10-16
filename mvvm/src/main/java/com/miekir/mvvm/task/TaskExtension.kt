@@ -36,12 +36,12 @@ fun <T> ViewModel.launchModelTask(
     onSuccess: ((result: T?) -> Unit)? = null,
     onFailure: ((code: Int, message: String, exception: TaskException) -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
-    onResult: ((errorResult: TaskException?, normalResult: T?) -> Unit)? = null,): TaskJob {
+    onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,): TaskJob {
 
     var successCallback: ((result: T?) -> Unit)? = onSuccess
     var failureCallback: ((code: Int, message: String, taskException: TaskException) -> Unit)? = onFailure
     var cancelCallback: (() -> Unit)? = onCancel
-    var resultCallback: ((errorResult: TaskException?, normalResult: T?) -> Unit)? = onResult
+    var resultCallback: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = onResult
 
     val taskJob = TaskJob()
 
@@ -53,12 +53,12 @@ fun <T> ViewModel.launchModelTask(
                 // 主动取消
                 cancelCallback?.invoke()
                 failureCallback?.invoke(exception.code, exception.resultMessage, exception)
-                resultCallback?.invoke(exception, null)
+                resultCallback?.invoke(null, exception)
             } else {
                 // 任务异常
                 val eResult = TaskException(exception)
                 failureCallback?.invoke(eResult.code, eResult.resultMessage, eResult)
-                resultCallback?.invoke(eResult, null)
+                resultCallback?.invoke(null, eResult)
             }
             taskJob.onResult()
 
@@ -93,7 +93,7 @@ fun <T> ViewModel.launchModelTask(
         }
 
         successCallback?.invoke(returnTypeObj)
-        resultCallback?.invoke(null, returnTypeObj)
+        resultCallback?.invoke(returnTypeObj, null)
         taskJob.onResult()
 
         cancelCallback = null
@@ -114,13 +114,13 @@ fun <T> launchGlobalTask(
     onSuccess: ((result: T?) -> Unit)? = null,
     onFailure: ((code: Int, message: String, taskException: TaskException) -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
-    onResult: ((errorResult: TaskException?, normalResult: T?) -> Unit)? = null,
+    onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,
     scope: CoroutineScope = GlobalScope
 ): TaskJob {
     var successCallback: ((result: T?) -> Unit)? = onSuccess
     var failureCallback: ((code: Int, message: String, taskException: TaskException) -> Unit)? = onFailure
     var cancelCallback: (() -> Unit)? = onCancel
-    var resultCallback: ((errorResult: TaskException?, normalResult: T?) -> Unit)? = onResult
+    var resultCallback: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = onResult
 
     val taskJob = TaskJob()
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, exception ->
@@ -129,11 +129,11 @@ fun <T> launchGlobalTask(
             if (exception is CancelException) {
                 cancelCallback?.invoke()
                 failureCallback?.invoke(exception.code, exception.resultMessage, exception)
-                resultCallback?.invoke(exception, null)
+                resultCallback?.invoke(null, exception)
             } else {
                 val eResult = TaskException(exception)
                 failureCallback?.invoke(eResult.code, eResult.resultMessage, eResult)
-                resultCallback?.invoke(eResult, null)
+                resultCallback?.invoke(null, eResult)
             }
             taskJob.onResult()
 
@@ -163,7 +163,7 @@ fun <T> launchGlobalTask(
                 (returnTypeObj as NetResponse).valid()
             }
             successCallback?.invoke(returnTypeObj)
-            resultCallback?.invoke(null, returnTypeObj)
+            resultCallback?.invoke(returnTypeObj, null)
             taskJob.onResult()
 
             cancelCallback = null

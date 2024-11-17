@@ -48,6 +48,8 @@ fun <T> ViewModel.launchModelTask(
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, exception ->
         // 耗时任务出错后，回到主线程
         GlobalContext.runOnUiThread {
+            taskJob.onResult()
+
             // 获取具体错误类型
             if (exception is CancelException) {
                 // 主动取消
@@ -60,7 +62,6 @@ fun <T> ViewModel.launchModelTask(
                 failureCallback?.invoke(eResult.code, eResult.resultMessage, eResult)
                 resultCallback?.invoke(null, eResult)
             }
-            taskJob.onResult()
 
             cancelCallback = null
             successCallback = null
@@ -86,6 +87,8 @@ fun <T> ViewModel.launchModelTask(
             }
         }
 
+        taskJob.onResult()
+
         // 耗时任务完成后，回到主线程
         // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
         if (returnTypeObj is NetResponse) {
@@ -94,7 +97,6 @@ fun <T> ViewModel.launchModelTask(
 
         successCallback?.invoke(returnTypeObj)
         resultCallback?.invoke(returnTypeObj, null)
-        taskJob.onResult()
 
         cancelCallback = null
         successCallback = null
@@ -126,6 +128,8 @@ fun <T> launchGlobalTask(
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, exception ->
         // 协程出现异常，不可继续切协程，只能使用线程调度
         GlobalContext.runOnUiThread {
+            taskJob.onResult()
+
             if (exception is CancelException) {
                 cancelCallback?.invoke()
                 failureCallback?.invoke(exception.code, exception.resultMessage, exception)
@@ -135,7 +139,6 @@ fun <T> launchGlobalTask(
                 failureCallback?.invoke(eResult.code, eResult.resultMessage, eResult)
                 resultCallback?.invoke(null, eResult)
             }
-            taskJob.onResult()
 
             cancelCallback = null
             successCallback = null
@@ -158,13 +161,14 @@ fun <T> launchGlobalTask(
         }
 
         withContext(Dispatchers.Main) {
+            taskJob.onResult()
+
             // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
             if (returnTypeObj is NetResponse) {
                 (returnTypeObj as NetResponse).valid()
             }
             successCallback?.invoke(returnTypeObj)
             resultCallback?.invoke(returnTypeObj, null)
-            taskJob.onResult()
 
             cancelCallback = null
             successCallback = null

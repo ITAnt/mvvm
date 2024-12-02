@@ -17,6 +17,7 @@ import androidx.fragment.app.FragmentOnAttachListener
 import androidx.lifecycle.Lifecycle
 import com.miekir.mvvm.MvvmManager
 import com.miekir.mvvm.core.view.result.ActivityResult
+import com.miekir.mvvm.extension.applyHighRefreshRate
 import com.miekir.mvvm.log.L
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.math.absoluteValue
@@ -107,6 +108,9 @@ abstract class BasicActivity : AppCompatActivity(), IView {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 系统调节字体大小不影响本APP，必须放到super.onCreate前面
+        if (enableHighRefreshRate()) {
+            applyHighRefreshRate()
+        }
         super.onCreate(savedInstanceState)
         mSavedInstanceState = savedInstanceState
         supportFragmentManager.addFragmentOnAttachListener(fragmentAttachListener)
@@ -241,6 +245,13 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      */
     open fun enableHistoryOutState(): Boolean {
         return true
+    }
+
+    /**
+     * 是否启用高刷新率
+     */
+    open fun enableHighRefreshRate(): Boolean {
+        return false
     }
 
     override fun onSaveInstanceState(outState: Bundle) {

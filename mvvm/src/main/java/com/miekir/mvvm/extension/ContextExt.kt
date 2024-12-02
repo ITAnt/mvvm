@@ -41,7 +41,7 @@ inline fun <reified T : Activity> Context.openActivity(newTask: Boolean = false)
  * M 是 6.0，6.0修改了新的api，并且就已经支持修改window的刷新率了。但是6.0那会儿，也没什么手机支持高刷新率吧，
  * 所以也没什么人注意它。我更倾向于直接判断 O，也就是 Android 8.0，我觉得这个时候支持高刷新率的手机已经开始了。
  */
-fun Activity.enableHighRefreshRate() {
+fun Activity.applyHighRefreshRate() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
         // 获取系统window支持的模式
         val modes = window.windowManager.defaultDisplay.supportedModes

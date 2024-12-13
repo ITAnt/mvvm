@@ -6,6 +6,8 @@ import android.util.AttributeSet;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.miekir.mvvm.log.L;
+
 /**
  * 解决偶发的闪退
  * IndexOutOfBoundsException: Inconsistency detected. Invalid view holder adapter positionBaseViewHolder
@@ -29,7 +31,7 @@ public class LinearLayoutManagerWrapper extends LinearLayoutManager {
         try {
             super.onLayoutChildren(recycler, state);
         } catch (IndexOutOfBoundsException e) {
-            e.printStackTrace();
+            L.e(e.getMessage());
         }
     }
 }

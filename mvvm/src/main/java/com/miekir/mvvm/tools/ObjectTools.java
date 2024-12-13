@@ -1,5 +1,7 @@
 package com.miekir.mvvm.tools;
 
+import com.miekir.mvvm.log.L;
+
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -30,7 +32,7 @@ public class ObjectTools {
             clonedObj = (T) ois.readObject();
             ois.close();
         } catch (Exception e) {
-            e.printStackTrace();
+            L.e(e.getMessage());
         }
         return clonedObj;
     }

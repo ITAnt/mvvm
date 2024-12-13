@@ -48,7 +48,7 @@ public class MvvmManager {
         try {
             return mTaskLoadingClass.newInstance();
         } catch (Exception e) {
-            e.printStackTrace();
+            L.e(e.getMessage());
         }
         return null;
     }

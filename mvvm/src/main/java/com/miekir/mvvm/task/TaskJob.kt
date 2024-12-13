@@ -6,7 +6,7 @@ import kotlin.coroutines.CoroutineContext
 
 class TaskJob {
     private var context: CoroutineContext? = null
-    private var job: Job? = null
+    var job: Job? = null
     private var taskLoading: TaskLoading? = null
 
     fun setup(context: CoroutineContext, job: Job?) {

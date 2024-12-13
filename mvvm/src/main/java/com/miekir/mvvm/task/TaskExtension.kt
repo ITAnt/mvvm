@@ -87,13 +87,13 @@ fun <T> ViewModel.launchModelTask(
             }
         }
 
-        taskJob.onResult()
-
         // 耗时任务完成后，回到主线程
         // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
         if (returnTypeObj is NetResponse) {
             (returnTypeObj as NetResponse).valid()
         }
+
+        taskJob.onResult()
 
         successCallback?.invoke(returnTypeObj)
         resultCallback?.invoke(returnTypeObj, null)
@@ -161,12 +161,13 @@ fun <T> launchGlobalTask(
         }
 
         withContext(Dispatchers.Main) {
-            taskJob.onResult()
-
             // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
             if (returnTypeObj is NetResponse) {
                 (returnTypeObj as NetResponse).valid()
             }
+
+            taskJob.onResult()
+
             successCallback?.invoke(returnTypeObj)
             resultCallback?.invoke(returnTypeObj, null)
 

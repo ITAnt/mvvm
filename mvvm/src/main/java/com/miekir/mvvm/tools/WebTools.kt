@@ -6,6 +6,7 @@ import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
 import android.webkit.WebView
+import com.miekir.mvvm.log.L
 
 object WebTools {
 
@@ -66,7 +67,7 @@ object WebTools {
             // Clear all the Application Cache, Web SQL Database and the HTML5 Web Storage
             //WebStorage.getInstance().deleteAllData()
         } catch (e: Exception) {
-            e.printStackTrace()
+            L.e(e.message)
         }
     }
 }

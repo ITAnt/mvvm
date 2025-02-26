@@ -15,7 +15,6 @@ import androidx.viewbinding.ViewBinding
  * 方案二：activity仅提供rootView，通过rootView add/remove对应的自定义布局(ViewBinding.root)，共用一个数据实体（也可以不同）
  */
 abstract class BasicBindingActivity<VB : ViewBinding> : BasicActivity() {
-    var rootView: View? = null
     lateinit var binding: VB
 
     /**
@@ -37,14 +36,19 @@ abstract class BasicBindingActivity<VB : ViewBinding> : BasicActivity() {
         if (binding is ViewDataBinding) {
             (binding as? ViewDataBinding?)?.lifecycleOwner = this
         }
-        rootView = binding.root
-        setContentView(rootView)
+        setContentView(binding.root)
         onInit()
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        rootView = null
+        if (binding is ViewDataBinding) {
+            (binding as? ViewDataBinding?)?.let {
+                // 移除变量表达式监听
+                it.unbind()
+                it.lifecycleOwner = null
+            }
+        }
     }
 
     /*override fun onPause() {

@@ -12,25 +12,30 @@ import androidx.viewbinding.ViewBinding
  * 注意不要在子类的onDestroy里调用binding了
  */
 abstract class BasicBindingFragment<VB : ViewBinding> : BasicFragment() {
-    var bindingNullable: VB? = null
-    val binding get() = bindingNullable!!
+    lateinit var binding: VB
 
     /**
      * 布局文件绑定
      */
     abstract fun onBindingInflate(): VB
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
-        bindingNullable = onBindingInflate()
-        if (bindingNullable is ViewDataBinding) {
+        binding = onBindingInflate()
+        if (binding is ViewDataBinding) {
             // 不能赋值this，会产生内存泄漏
-            (bindingNullable as? ViewDataBinding?)?.lifecycleOwner = viewLifecycleOwner
+            (binding as? ViewDataBinding?)?.lifecycleOwner = viewLifecycleOwner
         }
-        return bindingNullable?.root
+        return binding.root
     }
 
     override fun onDestroyView() {
-        // 在navigation框架下，跳转新Fragment，旧Fragment会执行onDestroyView儿不执行onDestroy
-        bindingNullable = null
         super.onDestroyView()
+        // 在navigation框架下，跳转新Fragment，旧Fragment会执行onDestroyView儿不执行onDestroy
+        if (binding is ViewDataBinding) {
+            (binding as? ViewDataBinding?)?.let {
+                // 移除变量表达式监听
+                it.unbind()
+                it.lifecycleOwner = null
+            }
+        }
     }
 }

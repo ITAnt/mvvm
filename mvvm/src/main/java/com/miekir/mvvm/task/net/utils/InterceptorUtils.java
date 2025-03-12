@@ -23,6 +23,7 @@ import okhttp3.logging.HttpLoggingInterceptor;
  */
 public final class InterceptorUtils {
     private InterceptorUtils() {}
+    private static final String TAG = "Retrofit";
 
     /**
      * @param interceptor 拦截器
@@ -73,20 +74,20 @@ public final class InterceptorUtils {
                         JSONObject jsonObject = new JSONObject(message);
                         for (String key : ignoreKeys) {
                             if (jsonObject.has(key)) {
-                                jsonObject.put(key, "[已过滤]");
+                                jsonObject.put(key, "图片[" + jsonObject.get(key).toString().length() + "B]");
                             }
                         }
                         String filterLog = jsonObject.toString();
                         if (TextUtils.isEmpty(filterLog)) {
-                            L.i("Retrofit", message);
+                            L.i(TAG, message);
                         } else {
-                            L.i("Retrofit", filterLog);
+                            L.i(TAG, filterLog);
                         }
                     } catch (Exception e) {
-                        L.i("Retrofit", message);
+                        L.i(TAG, message);
                     }
                 } else {
-                    L.i("Retrofit", message);
+                    L.i(TAG, message);
                 }
             }
         });

@@ -10,7 +10,7 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.miekir.common.R;
+import com.miekir.mvvm.R;
 
 /*使用：
 val loading = DefaultTaskLoading().apply {

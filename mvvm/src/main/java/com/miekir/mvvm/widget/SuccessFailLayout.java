@@ -12,7 +12,7 @@ import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.miekir.common.R;
+import com.miekir.mvvm.R;
 
 /**
  * 成功失败布局

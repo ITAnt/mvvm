@@ -27,7 +27,7 @@ import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-import com.miekir.common.R;
+import com.miekir.mvvm.R;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

@@ -2,7 +2,7 @@ package com.miekir.mvvm.core.view.anim;
 
 import android.app.Activity;
 
-import com.miekir.common.R;
+import com.miekir.mvvm.R;
 
 /**
  * 打开时从右侧进入，退出时向右侧退出的动画

@@ -27,7 +27,7 @@ import androidx.annotation.NonNull;
 import androidx.core.view.MarginLayoutParamsCompat;
 import androidx.core.view.ViewCompat;
 
-import com.miekir.common.R;
+import com.miekir.mvvm.R;
 
 /**
  * Helper for layouts that want to support percentage based dimensions.

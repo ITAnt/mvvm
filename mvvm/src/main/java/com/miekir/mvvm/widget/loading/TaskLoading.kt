@@ -60,6 +60,7 @@ abstract class TaskLoading: ProgressObserver {
     ) {
         // 如果是不可见任务，则不需要弹出对话框，任务的生命周期不与对话框绑定
         if (loadingType == LoadingType.INVISIBLE) {
+            dismiss()
             return
         }
 

@@ -70,44 +70,41 @@ fun <T> ViewModel.launchModelTask(
         }
     }
 
-    val taskContext = CoroutineName("ViewModel Main Task") + Dispatchers.Main + coroutineExceptionHandler
+    val taskContext = CoroutineName("ViewModel IO Task") + Dispatchers.IO + coroutineExceptionHandler
     val job = viewModelScope.launch(taskContext) {
         var returnTypeObj: T? = null
         // 在“子线程”执行耗时任务，捕获取消异常
-        withContext(CoroutineName("ViewModel IO Task") + Dispatchers.IO + coroutineExceptionHandler) {
-            // withTimeout超时抛出异常，withTimeoutOrNull超时返回null，而不是抛出异常
-            try {
-                returnTypeObj = taskBody.invoke()
-            } catch (e: Exception) {
-                if (e is CancellationException) {
-                    throw CancelException()
-                } else {
-                    throw e
-                }
-            }
-        }
+        // withTimeout超时抛出异常，withTimeoutOrNull超时返回null，而不是抛出异常
+        returnTypeObj = taskBody.invoke()
 
         // 耗时任务完成后，回到主线程
-        // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
-        // 注意：在taskBody()里调用网络接口时，不能调用到NetResponse的下一层，且最后的返回值（最后一行的结果）必须是NetResponse
-        // 否则自己需要拿到NetResponse手动调用一下valid()方法，只有这样才能进行有效性校验
-        if (returnTypeObj is NetResponse) {
-            (returnTypeObj as NetResponse).valid()
+        withContext(CoroutineName("ViewModel Main Task") + Dispatchers.Main) {
+            // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
+            // 注意：在taskBody()里调用网络接口时，不能调用到NetResponse的下一层，且最后的返回值（最后一行的结果）必须是NetResponse
+            // 否则自己需要拿到NetResponse手动调用一下valid()方法，只有这样才能进行有效性校验
+            if (returnTypeObj is NetResponse) {
+                (returnTypeObj as NetResponse).valid()
+            }
+
+            // 先调用onResult让dialog消失，再回调结果，因为结果里可能会是RecyclerView的adapter在主线程加载大量数据，导致dialog动画卡住，体验很差。
+            // 同理，SwipeRefreshLayout的onRefresh里直接赋值binding.srlPhoto.isRefreshing = false后开始请求任务，
+            // 但由于SwipeRefreshLayout会有动画，如果任务结束得很快，到了刷新列表的时候，就会和SwipeRefreshLayout的动画冲突，导致SwipeRefreshLayout卡住，所以应该加上
+            // binding.srlPhoto.isRefreshing = false 和 binding.srlPhoto.isEnabled = false，等完成任务后，再binding.srlPhoto.isEnabled = true
+            taskJob.onResult()
+
+            successCallback?.invoke(returnTypeObj)
+            resultCallback?.invoke(returnTypeObj, null)
+
+            cancelCallback = null
+            successCallback = null
+            failureCallback = null
+            resultCallback = null
         }
-
-        // 先调用onResult让dialog消失，再回调结果，因为结果里可能会是RecyclerView的adapter在主线程加载大量数据，导致dialog动画卡住，体验很差。
-        // 同理，SwipeRefreshLayout的onRefresh里直接赋值binding.srlPhoto.isRefreshing = false后开始请求任务，
-        // 但由于SwipeRefreshLayout会有动画，如果任务结束得很快，到了刷新列表的时候，就会和SwipeRefreshLayout的动画冲突，导致SwipeRefreshLayout卡住，所以应该加上
-        // binding.srlPhoto.isRefreshing = false 和 binding.srlPhoto.isEnabled = false，等完成任务后，再binding.srlPhoto.isEnabled = true
-        taskJob.onResult()
-
-        successCallback?.invoke(returnTypeObj)
-        resultCallback?.invoke(returnTypeObj, null)
-
-        cancelCallback = null
-        successCallback = null
-        failureCallback = null
-        resultCallback = null
+    }
+    job.invokeOnCompletion { cause ->
+        if (cause is CancellationException) {
+            coroutineExceptionHandler.handleException(taskContext, CancelException())
+        }
     }
 
     taskJob.setup(taskContext, job)
@@ -153,8 +150,8 @@ fun <T> launchGlobalTask(
         }
     }
 
-    val context = CoroutineName("Global Task") + Dispatchers.IO + coroutineExceptionHandler
-    val job = scope.launch(context) {
+    val taskContext = CoroutineName("Global IO Task") + Dispatchers.IO + coroutineExceptionHandler
+    val job = scope.launch(taskContext) {
         val returnTypeObj: T?
         try {
             returnTypeObj = taskBody()
@@ -166,7 +163,7 @@ fun <T> launchGlobalTask(
             }
         }
 
-        withContext(Dispatchers.Main) {
+        withContext(CoroutineName("Global Main Task") + Dispatchers.Main) {
             // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
             if (returnTypeObj is NetResponse) {
                 (returnTypeObj as NetResponse).valid()
@@ -184,7 +181,13 @@ fun <T> launchGlobalTask(
         }
     }
 
-    taskJob.setup(context, job)
+    job.invokeOnCompletion { cause ->
+        if (cause is CancellationException) {
+            coroutineExceptionHandler.handleException(taskContext, CancelException())
+        }
+    }
+
+    taskJob.setup(taskContext, job)
     return taskJob
 }
 

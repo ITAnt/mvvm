@@ -1,6 +1,7 @@
 package com.miekir.mvvm.exception;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * @author : 詹子聪
@@ -31,27 +32,25 @@ public class TaskException extends Exception {
     }
 
     public TaskException(int code) {
-        this.code = code;
-        this.resultMessage = ExceptionManager.getInstance().getExceptionHandler().getMessageByCode(code);
+        this(code, ExceptionManager.getInstance().getExceptionHandler().getMessageByCode(code));
     }
 
     public TaskException(@NonNull String message) {
-        super(message);
-        this.code = ExceptionManager.getInstance().getExceptionHandler().getFailedCode();
-        this.resultMessage = message;
+        this(ExceptionManager.getInstance().getExceptionHandler().getFailedCode(), message);
     }
 
     public TaskException(int code, @NonNull String message) {
         super(message);
         this.code = code;
         this.resultMessage = message;
+        this.rawException = this;
     }
 
     public TaskException(@NonNull Throwable throwable) {
         super(throwable);
-        this.rawException = throwable;
         TaskException taskException = ExceptionManager.getInstance().getExceptionHandler().handleException(throwable);
         this.code = taskException.getCode();
         this.resultMessage = taskException.resultMessage;
+        this.rawException = throwable;
     }
 }

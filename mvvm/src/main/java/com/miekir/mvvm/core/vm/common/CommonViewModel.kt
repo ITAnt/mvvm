@@ -81,34 +81,30 @@ abstract class CommonViewModel<V>(viewFromChild: V) {
             }
         }
 
-        val taskContext = CoroutineName("View Task") + Dispatchers.Main + coroutineExceptionHandler
+        val taskContext = CoroutineName("CommonViewModel IO Task") + Dispatchers.IO + coroutineExceptionHandler
         val job = taskScope?.launch(taskContext) {
             var returnTypeObj: T? = null
             // 在“子线程”执行耗时任务，try catch取消异常
-            withContext(CoroutineName("ViewModel Task") + Dispatchers.IO + coroutineExceptionHandler) {
-                try {
-                    returnTypeObj = taskBody()
-                } catch (e: Exception) {
-                    if (e is CancellationException) {
-                        throw CancelException()
-                    } else {
-                        throw e
-                    }
+            returnTypeObj = taskBody()
+            withContext(CoroutineName("CommonViewModel main Task") + Dispatchers.IO + coroutineExceptionHandler) {
+                // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
+                if (returnTypeObj is NetResponse) {
+                    (returnTypeObj as NetResponse).valid()
                 }
+
+                successCallback?.invoke(returnTypeObj)
+                resultCallback?.invoke(null, returnTypeObj)
+
+                cancelCallback = null
+                successCallback = null
+                failureCallback = null
+                resultCallback = null
             }
-
-            // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
-            if (returnTypeObj is NetResponse) {
-                (returnTypeObj as NetResponse).valid()
+        }
+        job?.invokeOnCompletion { cause ->
+            if (cause is CancellationException) {
+                coroutineExceptionHandler.handleException(taskContext, CancelException())
             }
-
-            successCallback?.invoke(returnTypeObj)
-            resultCallback?.invoke(null, returnTypeObj)
-
-            cancelCallback = null
-            successCallback = null
-            failureCallback = null
-            resultCallback = null
         }
 
         taskJob.setup(taskContext, job)

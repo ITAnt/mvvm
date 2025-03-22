@@ -37,6 +37,7 @@ fun IView.withLoadingDialog(
 
     // 不需要显示加载框
     if (basicActivity == null || loadingType == LoadingType.INVISIBLE) {
+        taskLoading?.dismiss()
         return
     }
 

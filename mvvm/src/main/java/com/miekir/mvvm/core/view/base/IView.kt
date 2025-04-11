@@ -34,6 +34,9 @@ fun IView.withLoadingDialog(
 
     // 开启任务
     val taskJob = taskGenerator()
+    if (!taskJob.firstLaunch) {
+        return
+    }
 
     // 不需要显示加载框
     if (basicActivity == null || loadingType == LoadingType.INVISIBLE) {

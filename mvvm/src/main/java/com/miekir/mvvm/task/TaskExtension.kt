@@ -1,8 +1,11 @@
 package com.miekir.mvvm.task
 
+import android.text.TextUtils
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.miekir.mvvm.context.GlobalContext
+import com.miekir.mvvm.core.vm.base.BaseViewModel
+import com.miekir.mvvm.core.vm.base.scopeMap
 import com.miekir.mvvm.exception.TaskException
 import com.miekir.mvvm.log.L
 import com.miekir.mvvm.task.net.NetResponse
@@ -19,6 +22,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withContext
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -30,13 +34,23 @@ import kotlin.coroutines.cancellation.CancellationException
  * 否则不会处理服务器正常工作时返回的错误码，直接把它当作请求成功了
  *
  * @param onResult errorResult为null则表示请求成功
+ * @param tag 用于防止重复类型【tag】的任务，只有在继承BaseViewMode的子类中才起作用
  */
 fun <T> ViewModel.launchModelTask(
     taskBody: suspend () -> T?,
     onSuccess: ((result: T?) -> Unit)? = null,
     onFailure: ((code: Int, message: String, exception: TaskException) -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
-    onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,): TaskJob {
+    onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,
+    tag: String? = null): TaskJob {
+    val currentViewModel = this
+    if (currentViewModel is BaseViewModel && !TextUtils.isEmpty(tag)) {
+        val lastTaskJob = scopeMap[this]?.get(tag)
+        if (lastTaskJob != null && lastTaskJob.job?.isCompleted != true) {
+            lastTaskJob.firstLaunch = false
+            return lastTaskJob
+        }
+    }
 
     var successCallback: ((result: T?) -> Unit)? = onSuccess
     var failureCallback: ((code: Int, message: String, taskException: TaskException) -> Unit)? = onFailure
@@ -49,7 +63,9 @@ fun <T> ViewModel.launchModelTask(
         // 耗时任务出错后，回到主线程
         GlobalContext.runOnUiThread {
             taskJob.onResult()
-
+            if (currentViewModel is BaseViewModel && tag != null && !TextUtils.isEmpty(tag)) {
+                currentViewModel.tagJobMap.remove(tag)
+            }
             // 获取具体错误类型
             if (exception is CancelException) {
                 // 主动取消
@@ -106,32 +122,48 @@ fun <T> ViewModel.launchModelTask(
             coroutineExceptionHandler.handleException(taskContext, CancelException())
         }
     }
-
     taskJob.setup(taskContext, job)
+
+    if (currentViewModel is BaseViewModel && tag != null && !TextUtils.isEmpty(tag)) {
+        currentViewModel.tagJobMap[tag] = taskJob
+    }
     return taskJob
 }
 
 /**
  * 运行任务，任务自动切换主线程、子线程，生命周期与scope一致，默认是全局scope
  */
+private val globalTagJobMap: ConcurrentHashMap<String, TaskJob> by lazy {
+    ConcurrentHashMap()
+}
 fun <T> launchGlobalTask(
     taskBody: suspend () -> T?,
     onSuccess: ((result: T?) -> Unit)? = null,
     onFailure: ((code: Int, message: String, taskException: TaskException) -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
     onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,
-    scope: CoroutineScope = GlobalScope
+    scope: CoroutineScope = GlobalScope,
+    tag: String? = null
 ): TaskJob {
     var successCallback: ((result: T?) -> Unit)? = onSuccess
     var failureCallback: ((code: Int, message: String, taskException: TaskException) -> Unit)? = onFailure
     var cancelCallback: (() -> Unit)? = onCancel
     var resultCallback: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = onResult
 
+    if (tag != null && !TextUtils.isEmpty(tag)) {
+        val lastTaskJob = globalTagJobMap[tag]
+        if (lastTaskJob != null && lastTaskJob.job?.isCompleted != true) {
+            return lastTaskJob
+        }
+    }
     val taskJob = TaskJob()
     val coroutineExceptionHandler = CoroutineExceptionHandler { _, exception ->
         // 协程出现异常，不可继续切协程，只能使用线程调度
         GlobalContext.runOnUiThread {
             taskJob.onResult()
+            if (tag != null && !TextUtils.isEmpty(tag)) {
+                globalTagJobMap.remove(tag)
+            }
 
             if (exception is CancelException) {
                 cancelCallback?.invoke()
@@ -188,6 +220,10 @@ fun <T> launchGlobalTask(
     }
 
     taskJob.setup(taskContext, job)
+
+    if (tag != null && !TextUtils.isEmpty(tag)) {
+        globalTagJobMap[tag] = taskJob
+    }
     return taskJob
 }
 

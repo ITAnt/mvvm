@@ -6,6 +6,8 @@ import androidx.lifecycle.ViewModelStoreOwner
 import com.miekir.mvvm.core.view.base.BasicActivity
 import com.miekir.mvvm.core.view.base.BasicFragment
 import com.miekir.mvvm.core.view.base.IView
+import com.miekir.mvvm.task.TaskJob
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Copyright (C), 2019-2020, Miekir
@@ -123,4 +125,26 @@ inline fun <reified P : ViewModel> IView.viewModel(noinline factory: (() -> P)? 
     }
 }
 
+internal val scopeMap by lazy {
+    ConcurrentHashMap<BaseViewModel, ConcurrentHashMap<String, TaskJob>>()
+}
+class BaseViewModel : ViewModel() {
+    internal val tagJobMap: ConcurrentHashMap<String, TaskJob>
+        get() {
+            val map = scopeMap[this]
+            if (map == null) {
+                val newMap = ConcurrentHashMap<String, TaskJob>()
+                scopeMap[this] = newMap
+                return newMap
+            } else {
+                return map
+            }
+        }
+
+    override fun onCleared() {
+        super.onCleared()
+        tagJobMap.clear()
+        scopeMap.remove(this)
+    }
+}
 

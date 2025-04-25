@@ -46,9 +46,11 @@ fun <T> ViewModel.launchModelTask(
     val currentViewModel = this
     if (currentViewModel is BaseViewModel && !TextUtils.isEmpty(tag)) {
         val lastTaskJob = scopeMap[this]?.get(tag)
-        if (lastTaskJob != null && lastTaskJob.job?.isCompleted != true) {
-            lastTaskJob.firstLaunch = false
-            return lastTaskJob
+        if (lastTaskJob != null) {
+            if (lastTaskJob.job?.isCompleted != true && lastTaskJob.job?.isCancelled != true) {
+                lastTaskJob.firstLaunch = false
+                return lastTaskJob
+            }
         }
     }
 
@@ -63,9 +65,7 @@ fun <T> ViewModel.launchModelTask(
         // 耗时任务出错后，回到主线程
         GlobalContext.runOnUiThread {
             taskJob.onResult()
-            if (currentViewModel is BaseViewModel && tag != null && !TextUtils.isEmpty(tag)) {
-                currentViewModel.tagJobMap.remove(tag)
-            }
+
             // 获取具体错误类型
             if (exception is CancelException) {
                 // 主动取消
@@ -77,6 +77,10 @@ fun <T> ViewModel.launchModelTask(
                 val eResult = TaskException(exception)
                 failureCallback?.invoke(eResult.code, eResult.resultMessage, eResult)
                 resultCallback?.invoke(null, eResult)
+            }
+
+            if (currentViewModel is BaseViewModel && tag != null && !TextUtils.isEmpty(tag)) {
+                currentViewModel.tagJobMap.remove(tag)
             }
 
             cancelCallback = null
@@ -110,6 +114,10 @@ fun <T> ViewModel.launchModelTask(
 
             successCallback?.invoke(returnTypeObj)
             resultCallback?.invoke(returnTypeObj, null)
+
+            if (currentViewModel is BaseViewModel && tag != null && !TextUtils.isEmpty(tag)) {
+                currentViewModel.tagJobMap.remove(tag)
+            }
 
             cancelCallback = null
             successCallback = null
@@ -152,8 +160,11 @@ fun <T> launchGlobalTask(
 
     if (tag != null && !TextUtils.isEmpty(tag)) {
         val lastTaskJob = globalTagJobMap[tag]
-        if (lastTaskJob != null && lastTaskJob.job?.isCompleted != true) {
-            return lastTaskJob
+        if (lastTaskJob != null) {
+            if (lastTaskJob.job?.isCompleted != true && lastTaskJob.job?.isCancelled != true) {
+                lastTaskJob.firstLaunch = false
+                return lastTaskJob
+            }
         }
     }
     val taskJob = TaskJob()
@@ -161,9 +172,6 @@ fun <T> launchGlobalTask(
         // 协程出现异常，不可继续切协程，只能使用线程调度
         GlobalContext.runOnUiThread {
             taskJob.onResult()
-            if (tag != null && !TextUtils.isEmpty(tag)) {
-                globalTagJobMap.remove(tag)
-            }
 
             if (exception is CancelException) {
                 cancelCallback?.invoke()
@@ -173,6 +181,10 @@ fun <T> launchGlobalTask(
                 val eResult = TaskException(exception)
                 failureCallback?.invoke(eResult.code, eResult.resultMessage, eResult)
                 resultCallback?.invoke(null, eResult)
+            }
+
+            if (tag != null && !TextUtils.isEmpty(tag)) {
+                globalTagJobMap.remove(tag)
             }
 
             cancelCallback = null
@@ -205,6 +217,10 @@ fun <T> launchGlobalTask(
 
             successCallback?.invoke(returnTypeObj)
             resultCallback?.invoke(returnTypeObj, null)
+
+            if (tag != null && !TextUtils.isEmpty(tag)) {
+                globalTagJobMap.remove(tag)
+            }
 
             cancelCallback = null
             successCallback = null
@@ -308,7 +324,7 @@ suspend fun <T> taskSelect(
                         running.onAwait{it}
                     }
                 }
-                // 尝试每一个结果
+                // 移除已经完成的，剩下的可能要一并清理
                 for (running in runningList) {
                     if (running.isCompleted) {
                         runningList.remove(running)
@@ -329,7 +345,7 @@ suspend fun <T> taskSelect(
 
         if (cancelOthers) {
             for (running in runningList) {
-                if (!running.isCompleted) {
+                if (!running.isCompleted && !running.isCancelled) {
                     running.cancel()
                 }
             }

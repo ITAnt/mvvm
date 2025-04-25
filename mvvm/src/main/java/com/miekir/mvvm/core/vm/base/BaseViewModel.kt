@@ -128,7 +128,7 @@ inline fun <reified P : ViewModel> IView.viewModel(noinline factory: (() -> P)? 
 internal val scopeMap by lazy {
     ConcurrentHashMap<BaseViewModel, ConcurrentHashMap<String, TaskJob>>()
 }
-class BaseViewModel : ViewModel() {
+open class BaseViewModel : ViewModel() {
     internal val tagJobMap: ConcurrentHashMap<String, TaskJob>
         get() {
             val map = scopeMap[this]

@@ -24,18 +24,18 @@ fun IView.withLoadingDialog(
     progressId: String? = null,
     taskGenerator: () -> TaskJob
 ) {
+    // 开启任务
+    val taskJob = taskGenerator()
+    if (!taskJob.firstLaunch) {
+        return
+    }
+
     // 加载框的上下文
     var basicActivity: BasicActivity? = null
     if (this is BasicActivity) {
         basicActivity = this
     } else if (this is BasicFragment) {
         basicActivity = requireActivity() as? BasicActivity
-    }
-
-    // 开启任务
-    val taskJob = taskGenerator()
-    if (!taskJob.firstLaunch) {
-        return
     }
 
     // 不需要显示加载框

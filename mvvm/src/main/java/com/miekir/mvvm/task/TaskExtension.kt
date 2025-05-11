@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.miekir.mvvm.context.GlobalContext
 import com.miekir.mvvm.core.vm.base.BaseViewModel
-import com.miekir.mvvm.core.vm.base.scopeMap
 import com.miekir.mvvm.exception.TaskException
 import com.miekir.mvvm.log.L
 import com.miekir.mvvm.task.net.NetResponse
@@ -45,7 +44,7 @@ fun <T> ViewModel.launchModelTask(
     tag: String? = null): TaskJob {
     val currentViewModel = this
     if (currentViewModel is BaseViewModel && !TextUtils.isEmpty(tag)) {
-        val lastTaskJob = scopeMap[this]?.get(tag)
+        val lastTaskJob = currentViewModel.tagJobMap[tag]
         if (lastTaskJob != null) {
             if (lastTaskJob.job?.isCompleted != true && lastTaskJob.job?.isCancelled != true) {
                 lastTaskJob.firstLaunch = false

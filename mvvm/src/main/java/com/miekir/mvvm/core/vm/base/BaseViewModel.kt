@@ -125,26 +125,13 @@ inline fun <reified P : ViewModel> IView.viewModel(noinline factory: (() -> P)? 
     }
 }
 
-internal val scopeMap by lazy {
-    ConcurrentHashMap<BaseViewModel, ConcurrentHashMap<String, TaskJob>>()
-}
+
 open class BaseViewModel : ViewModel() {
-    internal val tagJobMap: ConcurrentHashMap<String, TaskJob>
-        get() {
-            val map = scopeMap[this]
-            if (map == null) {
-                val newMap = ConcurrentHashMap<String, TaskJob>()
-                scopeMap[this] = newMap
-                return newMap
-            } else {
-                return map
-            }
-        }
+    internal val tagJobMap by lazy { ConcurrentHashMap<String, TaskJob>() }
 
     override fun onCleared() {
-        super.onCleared()
         tagJobMap.clear()
-        scopeMap.remove(this)
+        super.onCleared()
     }
 }
 

@@ -47,12 +47,12 @@ class CloseableCoroutineScope(context: CoroutineContext) : Closeable, CoroutineS
 /**
  * View初始化它对应的Presenter
  */
-inline fun <reified V : View, reified P : WidgetViewModel<V>> View.viewModel() = lazy {
+/*inline fun <reified V : View, reified P : WidgetViewModel<V>> View.viewModel() = lazy {
     val presenter: P = P::class.java
         .getDeclaredConstructor(V::class.java)
         .newInstance(this)
     presenter
-}
+}*/
 
 ///**
 // * View初始化它对应的Presenter

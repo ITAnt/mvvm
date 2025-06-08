@@ -3,8 +3,6 @@ package com.miekir.mvvm.core.vm.base
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
-import com.miekir.mvvm.core.view.base.BasicActivity
-import com.miekir.mvvm.core.view.base.BasicFragment
 import com.miekir.mvvm.core.view.base.IView
 import com.miekir.mvvm.task.TaskJob
 import java.util.concurrent.ConcurrentHashMap
@@ -101,12 +99,12 @@ class ParamViewModelFactory<VM : ViewModel>(
  * 如果key相同，则指向同一个对象，默认和by viewModels返回对象是同一个
  *
  * @param factory 传入的构造函数，适用于在需要在构造函数附带参数的ViewModel，一个例子：
- * private val presenter: MainPresenter by lazy({ MainPresenter("hello world") })
+ * private val viewModel by model({ MainViewModel("hello world") })
  * 比modelClass.getConstructor(params::class.java).newInstance(params)更安全且灵活
  */
-inline fun <reified P : ViewModel> IView.viewModel(noinline factory: (() -> P)? = null, key: String? = null) = lazy(/*LazyThreadSafetyMode.NONE*/) {
+inline fun <reified P : ViewModel> IView.model(noinline factory: (() -> P)? = null, key: String? = null) = lazy(/*LazyThreadSafetyMode.NONE*/) {
     if (this !is ViewModelStoreOwner) {
-        throw RuntimeException("则当前类必须继承${BasicActivity::class.java.name}或${BasicFragment::class.java.name}")
+        throw RuntimeException("当前类必须是ViewModelStoreOwner的子类")
     }
     if (factory == null) {
         val presenter: P = if (key == null) {

@@ -12,7 +12,7 @@ import com.miekir.mvvm.core.vm.common.CommonViewModel
  * ②需要在Dialog的onDismiss方法里调用[CommonViewModel.canCelTask]方法，避免dismiss之后仍存在后台任务；
  * ③如果需要执行的是和Dialog生命周期不一致的任务，建议直接在单例中使用launchGlobalTask，配合LiveData更新数据。
  */
-abstract class LifecycleViewModel<V>(view: V, lifecycle: Lifecycle): CommonViewModel<V>(view) {
+open class LifecycleViewModel<V>(view: V, lifecycle: Lifecycle): CommonViewModel<V>(view) {
     init {
         lifecycle.addObserver(object: LifecycleEventObserver {
             override fun onStateChanged(source: LifecycleOwner, event: Lifecycle.Event) {
@@ -28,12 +28,14 @@ abstract class LifecycleViewModel<V>(view: V, lifecycle: Lifecycle): CommonViewM
 /**
  * View初始化它对应的Presenter
  */
+/*
 inline fun <reified V, reified P : LifecycleViewModel<V>> V.viewModel(lifecycle: Lifecycle) = lazy {
     val presenter: P = P::class.java
         .getDeclaredConstructor(V::class.java, Lifecycle::class.java)
         .newInstance(this, lifecycle)
     presenter
 }
+*/
 
 /*
 class MyDialog(lifecycle: Lifecycle) {

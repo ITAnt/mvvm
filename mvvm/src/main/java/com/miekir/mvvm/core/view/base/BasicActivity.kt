@@ -191,7 +191,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
             return
         }
         // 在主线程发起申请
-        if ((lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && !waitingPermissionResult) {
+        if (/*(lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && */!waitingPermissionResult) {
             // 界面可见，且没有已弹出的权限申请对话框，则直接申请
             waitingPermissionResult = true
             mPermissionList.clear()
@@ -218,7 +218,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
 
     fun openActivityForResult(intent: Intent, result: ActivityResult) {
         // 在主线程发起申请
-        if ((lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && !waitingActivityResult) {
+        if (/*(lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && */!waitingActivityResult) {
             waitingActivityResult = true
             mActivityResultCallback = result
             try {

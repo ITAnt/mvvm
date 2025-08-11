@@ -116,7 +116,21 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         supportFragmentManager.addFragmentOnAttachListener(fragmentAttachListener)
         //进入页面隐藏输入框
         //window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN)
-        loadingViewModel.onViewAttach(this)
+        onViewAttach()
+    }
+
+    /**
+     * Activity生命周期重建，如旋转屏幕等，需要重建对话框，防止崩溃
+     */
+    private fun onViewAttach() {
+        if (!enableTaskLoadingRecreate() || loadingViewModel.mLoadingDialogList.isEmpty()) {
+            return
+        }
+
+        // 恢复任务弹窗
+        for (dialog in loadingViewModel.mLoadingDialogList) {
+            dialog.recreate(this)
+        }
     }
 
     override fun startActivity(intent: Intent) {
@@ -191,7 +205,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
             return
         }
         // 在主线程发起申请
-        if ((lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && !waitingPermissionResult) {
+        if (/*(lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && */!waitingPermissionResult) {
             // 界面可见，且没有已弹出的权限申请对话框，则直接申请
             waitingPermissionResult = true
             mPermissionList.clear()
@@ -218,7 +232,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
 
     fun openActivityForResult(intent: Intent, result: ActivityResult) {
         // 在主线程发起申请
-        if ((lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && !waitingActivityResult) {
+        if (/*(lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && */!waitingActivityResult) {
             waitingActivityResult = true
             mActivityResultCallback = result
             try {

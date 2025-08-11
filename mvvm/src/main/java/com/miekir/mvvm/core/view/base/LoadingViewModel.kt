@@ -18,7 +18,7 @@ class LoadingViewModel: ViewModel() {
     /**
      * 与ViewModel关联的加载框列表
      */
-    private val mLoadingDialogList = CopyOnWriteArrayList<TaskLoading>()
+    val mLoadingDialogList = CopyOnWriteArrayList<TaskLoading>()
 
     /**
      * 新增任务弹窗
@@ -38,20 +38,6 @@ class LoadingViewModel: ViewModel() {
             return
         }
         mLoadingDialogList.remove(dialog)
-    }
-
-    /**
-     * Activity生命周期重建，如旋转屏幕等，需要重建对话框，防止崩溃
-     */
-    fun onViewAttach(view: BasicActivity) {
-        if (!view.enableTaskLoadingRecreate() || mLoadingDialogList.isEmpty()) {
-            return
-        }
-
-        // 恢复任务弹窗
-        for (dialog in mLoadingDialogList) {
-            dialog.recreate(view)
-        }
     }
 
     /**

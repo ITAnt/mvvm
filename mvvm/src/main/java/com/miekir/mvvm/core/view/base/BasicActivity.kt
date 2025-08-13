@@ -16,7 +16,6 @@ import androidx.activity.viewModels
 import androidx.annotation.MainThread
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentOnAttachListener
-import androidx.lifecycle.Observer
 import com.miekir.mvvm.MvvmManager
 import com.miekir.mvvm.core.view.result.ActivityResult
 import com.miekir.mvvm.extension.applyHighRefreshRate
@@ -25,7 +24,6 @@ import com.miekir.mvvm.widget.loading.DialogData
 import com.miekir.mvvm.widget.loading.LoadingType
 import com.miekir.mvvm.widget.loading.TaskLoading
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.math.absoluteValue
 
@@ -125,7 +123,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         supportFragmentManager.addFragmentOnAttachListener(fragmentAttachListener)
         //进入页面隐藏输入框
         //window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN)
-        //onRestoreLoading()
+        onRestoreLoading()
     }
 
     /**
@@ -365,12 +363,11 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      * 导致内存泄露，如果一段时间后调用dismiss，会闪退，所以应该发现旋转时马上dismiss
      */
     override fun onDestroy() {
-        /*for ((taskLoading, dialog) in loadingDialogMap) {
+        for ((taskLoading, dialog) in loadingDialogMap) {
             dialog.setOnCancelListener(null)
-            dialog.dismiss()
-            taskLoading.onDismiss()
+            taskLoading.dismiss()
         }
-        loadingDialogMap.clear()*/
+        loadingDialogMap.clear()
         super.onDestroy()
         supportFragmentManager.removeFragmentOnAttachListener(fragmentAttachListener)
         mPermissionQueue.clear()
@@ -381,18 +378,16 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      * 仅仅关闭对话框，不销毁任务进程
      */
     internal fun dismissLoading(taskLoading: TaskLoading) {
-        loadingDialogMap[taskLoading]?.let {
-            it.setOnCancelListener(null)
-            it.dismiss()
-        }
+        loadingDialogMap[taskLoading]?.setOnCancelListener(null)
+        taskLoading.dismiss()
         loadingDialogMap.remove(taskLoading)
-        taskLoading.onDismiss()
     }
 
     @MainThread
     internal fun showLoading(realLoading: TaskLoading, dialogData: DialogData) {
         realLoading.mDialogData = dialogData
         val dialog = realLoading.newLoadingDialog(this)
+        realLoading.mDialog = dialog
         loadingDialogMap[realLoading] = dialog
         dialog.setCanceledOnTouchOutside(false)
         if (dialogData.loadingType == LoadingType.STICKY) {
@@ -407,8 +402,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
                 dismissLoading(realLoading)
             }
         }
-        dialog.show()
-        realLoading.onShow()
+        realLoading.show()
         dialogData.completeLiveData.observe(this) { completed ->
             if (completed == true) {
                 loadingViewModel.removeLoadingDialogData(dialogData)

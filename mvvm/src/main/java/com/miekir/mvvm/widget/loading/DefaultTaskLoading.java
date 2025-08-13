@@ -48,6 +48,8 @@ public class DefaultTaskLoading extends TaskLoading {
         }
         Dialog dialog = new Dialog(activity, R.style.LoadingDialog);
         dialog.setContentView(dialogLayout, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
+        // 必须复制，否则无法弹出弹窗
+        mDialog = dialog;
         return dialog;
     }
 

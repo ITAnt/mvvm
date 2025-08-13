@@ -1,11 +1,7 @@
 package com.miekir.mvvm.widget.loading
 
 import android.app.Dialog
-import androidx.annotation.MainThread
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.Observer
-import com.miekir.mvvm.core.view.base.BasicActivity
-import com.miekir.mvvm.task.TaskJob
 import com.miekir.mvvm.task.progress.ProgressObserver
 
 /**
@@ -15,6 +11,9 @@ import com.miekir.mvvm.task.progress.ProgressObserver
 abstract class TaskLoading: ProgressObserver {
     @JvmField
     var mDialogData: DialogData? = null
+
+    @JvmField
+    internal var mDialog: Dialog? = null
 
     /**
      * 注意：在此方法中，不能为Dialog设置setOnCancelListener，因为在父类使用了该方法监听回收资源等。
@@ -26,12 +25,23 @@ abstract class TaskLoading: ProgressObserver {
     /**
      * 对话框消失时，不用再主动调用dialog的dismiss()方法
      */
-    abstract fun onDismiss()
+    protected abstract fun onDismiss()
 
     /**
      * 对话框显示时，不用再主动调用dialog的show()方法
      */
-    abstract fun onShow()
+    protected abstract fun onShow()
+
+    fun show() {
+        mDialog?.show()
+        onShow()
+    }
+
+    fun dismiss() {
+        onDismiss()
+        mDialog?.dismiss()
+        mDialog = null
+    }
 
     override fun onProgress(progress: Int) {
 

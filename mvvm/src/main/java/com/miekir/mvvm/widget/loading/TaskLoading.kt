@@ -13,7 +13,7 @@ abstract class TaskLoading: ProgressObserver {
     var mDialogData: DialogData? = null
 
     @JvmField
-    internal var mDialog: Dialog? = null
+    var mDialog: Dialog? = null
 
     /**
      * 注意：在此方法中，不能为Dialog设置setOnCancelListener，因为在父类使用了该方法监听回收资源等。

@@ -44,18 +44,31 @@ object WebTools {
 
         try {
             webView.run {
-                // 退出时调用此方法，移除绑定的服务，否则某些特定系统会报错
-                settings.javaScriptEnabled = false
-                val parent: ViewParent = parent
-                (parent as ViewGroup).removeView(this)
+                // 1. 停止加载和清理状态
                 stopLoading()
-                removeAllViews()
-
+                clearHistory()
                 clearCache(true)
                 clearFormData()
-                clearHistory()
+
+                // 2. 移除所有回调和客户端
+                webChromeClient = null
+                webViewClient = null
+
+                // 3. 禁用JavaScript和其他功能
+                settings.javaScriptEnabled = false
+                settings.setSupportZoom(false)
+                settings.setAppCacheEnabled(false)
+                settings.domStorageEnabled = false
+
+                // 4. 清理视图层次
+                removeAllViews()
+                destroyDrawingCache()
                 clearSslPreferences()
 
+                // 5. 从父布局移除（在主线程中）
+                (parent as? ViewGroup)?.removeView(this)
+
+                // 6. 最后销毁WebView
                 destroy()
             }
 

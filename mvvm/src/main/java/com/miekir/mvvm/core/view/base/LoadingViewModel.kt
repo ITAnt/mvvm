@@ -1,7 +1,7 @@
 package com.miekir.mvvm.core.view.base
 
 import androidx.lifecycle.ViewModel
-import com.miekir.mvvm.widget.loading.TaskLoading
+import com.miekir.mvvm.widget.loading.DialogData
 import java.util.concurrent.CopyOnWriteArrayList
 
 /**
@@ -18,44 +18,34 @@ class LoadingViewModel: ViewModel() {
     /**
      * 与ViewModel关联的加载框列表
      */
-    val mLoadingDialogList = CopyOnWriteArrayList<TaskLoading>()
+    val mLoadingDialogList = CopyOnWriteArrayList<DialogData>()
 
     /**
      * 新增任务弹窗
      */
-    fun addLoadingDialog(dialog: TaskLoading?) {
-        if (dialog == null || mLoadingDialogList.contains(dialog)) {
+    fun addLoadingDialogData(data: DialogData) {
+        if (mLoadingDialogList.contains(data)) {
             return
         }
-        mLoadingDialogList.add(dialog)
+        mLoadingDialogList.add(data)
     }
 
     /**
      * 移除任务弹窗
      */
-    fun removeLoadingDialog(dialog: TaskLoading?) {
-        if (dialog == null) {
-            return
-        }
+    fun removeLoadingDialogData(dialog: DialogData) {
         mLoadingDialogList.remove(dialog)
     }
 
-    /**
-     * 仅销毁界面
-     */
-    fun onViewDetach() {
-        for (dialog in mLoadingDialogList) {
-            dialog.dismiss()
-        }
-    }
+
 
     /**
      * 界面和任务都销毁
      */
     override fun onCleared() {
         super.onCleared()
-        for (dialog in mLoadingDialogList) {
-            dialog.cancelTaskAndDismiss()
+        for (dialogData in mLoadingDialogList) {
+            dialogData.taskJob?.cancel()
         }
         mLoadingDialogList.clear()
     }

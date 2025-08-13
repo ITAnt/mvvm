@@ -5,6 +5,7 @@ import com.miekir.mt.databinding.ActivityMainBinding
 import com.miekir.mvvm.core.view.base.BasicBindingActivity
 import com.miekir.mvvm.core.view.base.withLoadingDialog
 import com.miekir.mvvm.core.vm.base.viewModel
+import com.miekir.mvvm.extension.openActivity
 import com.miekir.mvvm.log.L
 import com.miekir.mvvm.tools.ToastTools
 
@@ -31,6 +32,8 @@ class MainActivity : BasicBindingActivity<ActivityMainBinding>(), IMainView {
                 mainPresenter.testFast()
             }
         }
+
+        openActivity<WebActivity>()
     }
 
     override fun onMainTaskCallback() {
@@ -54,4 +57,8 @@ class MainActivity : BasicBindingActivity<ActivityMainBinding>(), IMainView {
     }
 
     override fun onBindingInflate() = ActivityMainBinding.inflate(layoutInflater)
+
+    override fun onDestroy() {
+        super.onDestroy()
+    }
 }

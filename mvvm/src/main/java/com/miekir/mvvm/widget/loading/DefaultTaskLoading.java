@@ -41,21 +41,20 @@ public class DefaultTaskLoading extends TaskLoading {
         lv_circle = (CircleView) dialogView.findViewById(R.id.lv_circle);
         // 页面中显示文本
         tv_loading = (TextView) dialogView.findViewById(R.id.tv_loading);
-        if (!TextUtils.isEmpty(mMessage)) {
-            tv_loading.setText(mMessage);
+        if (mDialogData != null && !TextUtils.isEmpty(mDialogData.getTitle())) {
+            tv_loading.setText(mDialogData.getTitle());
         } else {
             tv_loading.setVisibility(View.GONE);
         }
         Dialog dialog = new Dialog(activity, R.style.LoadingDialog);
         dialog.setContentView(dialogLayout, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT));
-        mDialog = dialog;
         return dialog;
     }
 
     @Override
     public void onShow() {
-        if (!TextUtils.isEmpty(mMessage) && tv_loading != null) {
-            tv_loading.setText(mMessage);
+        if (mDialogData != null && !TextUtils.isEmpty(mDialogData.getTitle()) && tv_loading != null) {
+            tv_loading.setText(mDialogData.getTitle());
         }
 
         if (lv_circle != null) {

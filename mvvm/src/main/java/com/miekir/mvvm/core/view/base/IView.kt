@@ -2,6 +2,7 @@ package com.miekir.mvvm.core.view.base
 
 import com.miekir.mvvm.MvvmManager
 import com.miekir.mvvm.task.TaskJob
+import com.miekir.mvvm.widget.loading.DialogData
 import com.miekir.mvvm.widget.loading.LoadingType
 import com.miekir.mvvm.widget.loading.TaskLoading
 
@@ -21,7 +22,6 @@ fun IView.withLoadingDialog(
     loadingType: LoadingType = LoadingType.VISIBLE,
     message: String = "",
     taskLoading: TaskLoading? = null,
-    progressId: String? = null,
     taskGenerator: () -> TaskJob
 ) {
     // 开启任务
@@ -40,15 +40,21 @@ fun IView.withLoadingDialog(
 
     // 不需要显示加载框
     if (basicActivity == null || loadingType == LoadingType.INVISIBLE) {
-        taskLoading?.dismiss()
         return
     }
 
-    // 弹出加载框
+    // 创建弹窗
     var realLoading: TaskLoading? = taskLoading
     if (realLoading == null) {
         realLoading = MvvmManager.getInstance().newTaskLoading()
     }
+    if (realLoading == null) {
+        return
+    }
 
-    realLoading?.setupTask(basicActivity, taskJob, loadingType, message, progressId)
+    // 弹出加载框
+    val dialogData = DialogData(message, loadingType, taskJob)
+    taskJob.setupDialogData(dialogData)
+    basicActivity.loadingViewModel.addLoadingDialogData(dialogData)
+    basicActivity.showLoading(realLoading, dialogData)
 }

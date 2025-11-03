@@ -121,6 +121,10 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         super.onCreate(savedInstanceState)
         mSavedInstanceState = savedInstanceState
         supportFragmentManager.addFragmentOnAttachListener(fragmentAttachListener)
+        
+        // 将当前Activity关联到LoadingManager
+        LoadingHelper.getOrCreateManager(loadingViewModel).attachActivity(this)
+        
         //进入页面隐藏输入框
         //window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN)
         onRestoreLoading()
@@ -130,21 +134,23 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      * Activity生命周期重建，如旋转屏幕等，需要重建对话框，防止崩溃
      */
     private fun onRestoreLoading() {
-        if (!enableTaskLoadingRecreate() || loadingViewModel.mLoadingDialogList.isEmpty()) {
+        val loadingManager = LoadingHelper.getManager(loadingViewModel) ?: return
+        if (!enableTaskLoadingRecreate() || loadingManager.mLoadingDialogList.isEmpty()) {
             return
         }
 
         // 恢复任务弹窗
-        for (dialogData in loadingViewModel.mLoadingDialogList) {
+        val dialogList = ArrayList(loadingManager.mLoadingDialogList)
+        for (dialogData in dialogList) {
             dialogData.taskJob?.let { job ->
                 if (job.isActive() && dialogData.completeLiveData.value != true) {
                     val taskLoading = MvvmManager.getInstance().newTaskLoading()
                     showLoading(taskLoading, dialogData)
                 } else {
-                    loadingViewModel.removeLoadingDialogData(dialogData)
+                    loadingManager.removeLoadingDialogData(dialogData)
                 }
             } ?: run {
-                loadingViewModel.removeLoadingDialogData(dialogData)
+                loadingManager.removeLoadingDialogData(dialogData)
             }
         }
     }
@@ -369,8 +375,8 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         }
         loadingDialogMap.clear()
         
-        // 清理LoadingViewModel中的DialogData观察者
-        loadingViewModel.clearAllObservers(this)
+        // 通知LoadingHelper当前Activity即将销毁
+        LoadingHelper.onActivityDestroy(loadingViewModel, this, isFinishing)
         
         super.onDestroy()
         supportFragmentManager.removeFragmentOnAttachListener(fragmentAttachListener)
@@ -402,7 +408,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         dialog.setOnCancelListener {
             if (dialogData.loadingType != LoadingType.VISIBLE_ALONE) {
                 dialogData.taskJob?.cancel()
-                loadingViewModel.removeLoadingDialogData(dialogData)
+                LoadingHelper.getManager(loadingViewModel)?.removeLoadingDialogData(dialogData)
                 dismissLoading(realLoading)
             }
         }
@@ -410,7 +416,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         // 使用单次观察者，避免重复观察和内存泄漏
         dialogData.completeLiveData.observe(this) { completed ->
             if (completed == true) {
-                loadingViewModel.removeLoadingDialogData(dialogData)
+                LoadingHelper.getManager(loadingViewModel)?.removeLoadingDialogData(dialogData)
                 dismissLoading(realLoading)
             }
         }

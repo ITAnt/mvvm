@@ -1,66 +1,26 @@
 package com.miekir.mvvm.core.view.base
 
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
-import com.miekir.mvvm.widget.loading.DialogData
-import java.util.concurrent.CopyOnWriteArrayList
 
 /**
- * 没有在清单文件配置onConfigChanges="orientation|screenSize"时，加载框在Activity销毁重建的时候销毁与恢复，
- * 如：屏幕旋转等
- *
- * 原则来说，ViewModel不应该持有Dialog的实例，旧Activity销毁的时候，必须让它上面的Dialog全部销毁，否则会产生内存泄漏；
- * 但是在Activity销毁重建，任务还在继续的情况下，确实还要显示Dialog：
- * 方案1：在清单文件配置onConfigChanges="orientation|screenSize"
- * 方案2；Activity正常销毁重建，再重建的时候，但要在onDestroy的时候调用BaseViewModel的detachView，
- * 在onCreate的时候重新调用attachView
+ * 空的LoadingViewModel，仅用作LoadingHelper中ConcurrentHashMap的key
+ * 不持有任何变量和方法，避免内存泄漏
+ * 实际的业务逻辑都在LoadingManager中实现
+ * 
+ * 设计思路：
+ * - LoadingViewModel：仅作为key，利用ViewModel在配置变更时的生命周期特性
+ * - LoadingManager：实际的业务逻辑实现
+ * - LoadingHelper：单例管理两者的映射关系
  */
 class LoadingViewModel: ViewModel() {
+    
     /**
-     * 与ViewModel关联的加载框列表
-     */
-    val mLoadingDialogList = CopyOnWriteArrayList<DialogData>()
-
-    /**
-     * 新增任务弹窗
-     */
-    fun addLoadingDialogData(data: DialogData) {
-        if (mLoadingDialogList.contains(data)) {
-            return
-        }
-        mLoadingDialogList.add(data)
-    }
-
-    /**
-     * 移除任务弹窗
-     */
-    fun removeLoadingDialogData(dialog: DialogData) {
-        mLoadingDialogList.remove(dialog)
-    }
-
-    /**
-     * 清理所有观察者，防止内存泄漏
-     */
-    fun clearAllObservers(lifecycleOwner: LifecycleOwner) {
-        for (dialogData in mLoadingDialogList) {
-            dialogData.completeLiveData.removeObservers(lifecycleOwner)
-        }
-    }
-
-
-
-    /**
-     * 界面和任务都销毁
+     * 某些定制ROM可能不会回调onCleared，这里提供兜底清理
+     * 正常情况下，清理逻辑在BasicActivity的onDestroy中通过LoadingHelper处理
      */
     override fun onCleared() {
         super.onCleared()
-        // 创建副本避免并发修改异常
-        val dialogList = ArrayList(mLoadingDialogList)
-        for (dialogData in dialogList) {
-            dialogData.taskJob?.cancel()
-            // 清理LiveData的值和观察者，避免观察者持有引用
-            dialogData.completeLiveData.value = null
-        }
-        mLoadingDialogList.clear()
+        // 兜底清理，防止某些ROM不回调onCleared导致的内存泄漏
+        LoadingHelper.forceClean(this)
     }
 }

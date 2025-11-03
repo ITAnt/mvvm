@@ -370,9 +370,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         loadingDialogMap.clear()
         
         // 清理LoadingViewModel中的DialogData观察者
-        for (dialogData in loadingViewModel.mLoadingDialogList) {
-            dialogData.completeLiveData.removeObservers(this)
-        }
+        loadingViewModel.clearAllObservers(this)
         
         super.onDestroy()
         supportFragmentManager.removeFragmentOnAttachListener(fragmentAttachListener)
@@ -409,12 +407,11 @@ abstract class BasicActivity : AppCompatActivity(), IView {
             }
         }
         realLoading.show()
+        // 使用单次观察者，避免重复观察和内存泄漏
         dialogData.completeLiveData.observe(this) { completed ->
             if (completed == true) {
                 loadingViewModel.removeLoadingDialogData(dialogData)
                 dismissLoading(realLoading)
-                // 移除观察者，防止内存泄漏
-                dialogData.completeLiveData.removeObservers(this)
             }
         }
     }

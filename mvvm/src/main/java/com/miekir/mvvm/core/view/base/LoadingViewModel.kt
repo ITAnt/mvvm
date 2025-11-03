@@ -1,5 +1,6 @@
 package com.miekir.mvvm.core.view.base
 
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import com.miekir.mvvm.widget.loading.DialogData
 import java.util.concurrent.CopyOnWriteArrayList
@@ -37,6 +38,15 @@ class LoadingViewModel: ViewModel() {
         mLoadingDialogList.remove(dialog)
     }
 
+    /**
+     * 清理所有观察者，防止内存泄漏
+     */
+    fun clearAllObservers(lifecycleOwner: LifecycleOwner) {
+        for (dialogData in mLoadingDialogList) {
+            dialogData.completeLiveData.removeObservers(lifecycleOwner)
+        }
+    }
+
 
 
     /**
@@ -44,9 +54,11 @@ class LoadingViewModel: ViewModel() {
      */
     override fun onCleared() {
         super.onCleared()
-        for (dialogData in mLoadingDialogList) {
+        // 创建副本避免并发修改异常
+        val dialogList = ArrayList(mLoadingDialogList)
+        for (dialogData in dialogList) {
             dialogData.taskJob?.cancel()
-            // 清理LiveData的值，避免观察者持有引用
+            // 清理LiveData的值和观察者，避免观察者持有引用
             dialogData.completeLiveData.value = null
         }
         mLoadingDialogList.clear()

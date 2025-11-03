@@ -46,6 +46,8 @@ class LoadingViewModel: ViewModel() {
         super.onCleared()
         for (dialogData in mLoadingDialogList) {
             dialogData.taskJob?.cancel()
+            // 清理LiveData的值，避免观察者持有引用
+            dialogData.completeLiveData.value = null
         }
         mLoadingDialogList.clear()
     }

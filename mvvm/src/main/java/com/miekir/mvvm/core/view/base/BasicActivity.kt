@@ -368,6 +368,12 @@ abstract class BasicActivity : AppCompatActivity(), IView {
             taskLoading.dismiss()
         }
         loadingDialogMap.clear()
+        
+        // 清理LoadingViewModel中的DialogData观察者
+        for (dialogData in loadingViewModel.mLoadingDialogList) {
+            dialogData.completeLiveData.removeObservers(this)
+        }
+        
         super.onDestroy()
         supportFragmentManager.removeFragmentOnAttachListener(fragmentAttachListener)
         mPermissionQueue.clear()
@@ -407,6 +413,8 @@ abstract class BasicActivity : AppCompatActivity(), IView {
             if (completed == true) {
                 loadingViewModel.removeLoadingDialogData(dialogData)
                 dismissLoading(realLoading)
+                // 移除观察者，防止内存泄漏
+                dialogData.completeLiveData.removeObservers(this)
             }
         }
     }

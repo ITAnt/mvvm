@@ -1,7 +1,6 @@
 package com.miekir.mvvm.task
 
 import com.miekir.mvvm.widget.loading.DialogData
-import com.miekir.mvvm.widget.loading.TaskLoading
 import kotlinx.coroutines.Job
 import kotlin.coroutines.CoroutineContext
 
@@ -32,6 +31,8 @@ class TaskJob {
 
     fun onResult() {
         mDialogData?.completeLiveData?.postValue(true)
+        // 清理DialogData引用，防止内存泄漏
+        mDialogData = null
     }
 
     fun isActive(): Boolean {

@@ -101,6 +101,10 @@ class ParamViewModelFactory<VM : ViewModel>(
  * @param factory 传入的构造函数，适用于在需要在构造函数附带参数的ViewModel，一个例子：
  * private val viewModel by viewModel({ MainViewModel("hello world") })
  * 比modelClass.getConstructor(params::class.java).newInstance(params)更安全且灵活
+ *
+ * 有一个全局变量，引用了Activity中的一个view（如GeckoView，且如果不为空不重新初始化该全局变量），Activity销毁之后，
+ * 重新打开，再次使用那个全局变量去加载界面，加载完成后，回调给Activity，实际上是回调给第一个Activity，
+ * 此时会出现各种异常，如lifecycleScope.launch不能执行，ViewModel里启动协程失败等。（无论是本例还是官方的by viewmodels都无法避免）
  */
 inline fun <reified P : ViewModel> IView.viewModel(noinline factory: (() -> P)? = null, key: String? = null) = lazy(/*LazyThreadSafetyMode.NONE*/) {
     if (this !is ViewModelStoreOwner) {

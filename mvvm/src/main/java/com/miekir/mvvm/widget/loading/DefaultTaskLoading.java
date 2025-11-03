@@ -12,19 +12,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.miekir.mvvm.R;
 
-/*使用：
-val loading = DefaultTaskLoading().apply {
-    newLoadingDialog(this@MainActivity).apply {
-        setCancelable(false)
-        setCanceledOnTouchOutside(false)
-    }
-}
-loading.show()
-loading.dismiss()
-*/
 /**
  * @author 詹子聪
  * @date 2021-11-30 19:59
+ * 单独使用参考：TemplateProject BaseBindingActivity
  */
 public class DefaultTaskLoading extends TaskLoading {
     private CircleView lv_circle;

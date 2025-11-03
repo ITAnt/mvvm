@@ -2,8 +2,8 @@ package com.miekir.mvvm.core.view.base
 
 import androidx.lifecycle.LifecycleOwner
 import com.miekir.mvvm.widget.loading.DialogData
-import java.util.concurrent.CopyOnWriteArrayList
 import java.lang.ref.WeakReference
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * 加载对话框管理器，不继承ViewModel，避免内存泄漏

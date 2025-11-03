@@ -55,6 +55,6 @@ fun IView.withLoadingDialog(
     // 弹出加载框
     val dialogData = DialogData(message, loadingType, taskJob)
     taskJob.setupDialogData(dialogData)
-    LoadingHelper.getOrCreateManager(basicActivity.loadingViewModel).addLoadingDialogData(dialogData)
+    LoadingHelper.getOrCreateManager(basicActivity.activityKey).addLoadingDialogData(dialogData)
     basicActivity.showLoading(realLoading, dialogData)
 }

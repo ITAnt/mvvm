@@ -5,31 +5,32 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 加载对话框管理单例
- * 使用LoadingViewModel作为key，LoadingManager作为value
- * 避免ViewModel直接持有数据导致的内存泄漏问题
+ * 使用Activity的唯一标识字符串作为key，LoadingManager作为value
+ * 完全避免ViewModel，防止ViewModelLazy的内存泄漏问题
  */
 object LoadingHelper {
-    private val loadingManagerMap = ConcurrentHashMap<LoadingViewModel, LoadingManager>()
+    // 使用Activity唯一标识作为key，LoadingManager作为value
+    private val loadingManagerMap = ConcurrentHashMap<String, LoadingManager>()
 
     /**
      * 获取或创建LoadingManager
      */
-    fun getOrCreateManager(viewModel: LoadingViewModel): LoadingManager {
-        return loadingManagerMap.getOrPut(viewModel) { LoadingManager() }
+    fun getOrCreateManager(activityKey: String): LoadingManager {
+        return loadingManagerMap.getOrPut(activityKey) { LoadingManager() }
     }
 
     /**
      * 获取LoadingManager，如果不存在则返回null
      */
-    fun getManager(viewModel: LoadingViewModel): LoadingManager? {
-        return loadingManagerMap[viewModel]
+    fun getManager(activityKey: String): LoadingManager? {
+        return loadingManagerMap[activityKey]
     }
 
     /**
      * Activity销毁时清理
      */
-    fun onActivityDestroy(viewModel: LoadingViewModel, activity: LifecycleOwner, isFinishing: Boolean) {
-        val manager = loadingManagerMap[viewModel]
+    fun onActivityDestroy(activityKey: String, activity: LifecycleOwner, isFinishing: Boolean) {
+        val manager = loadingManagerMap[activityKey]
         if (manager != null) {
             // 清理观察者
             manager.clearAllObservers(activity)
@@ -37,16 +38,16 @@ object LoadingHelper {
             // 如果Activity真正销毁，清理所有数据并移除映射
             if (isFinishing) {
                 manager.clear()
-                loadingManagerMap.remove(viewModel)
+                loadingManagerMap.remove(activityKey)
             }
         }
     }
 
     /**
-     * 强制清理指定ViewModel的数据（用于兜底）
+     * 强制清理指定key的数据（用于兜底）
      */
-    fun forceClean(viewModel: LoadingViewModel) {
-        val manager = loadingManagerMap.remove(viewModel)
+    fun forceClean(activityKey: String) {
+        val manager = loadingManagerMap.remove(activityKey)
         manager?.clear()
     }
 
@@ -79,9 +80,14 @@ object LoadingHelper {
     fun getDebugInfo(): String {
         val sb = StringBuilder()
         sb.append("LoadingHelper Debug Info:\n")
-        sb.append("Total ViewModels: ${loadingManagerMap.size}\n")
-        loadingManagerMap.forEach { (viewModel, manager) ->
-            sb.append("ViewModel: ${viewModel.hashCode()}, DialogCount: ${manager.mLoadingDialogList.size}\n")
+        sb.append("Total Activities: ${loadingManagerMap.size}\n")
+        sb.append("----------------------------------------\n")
+        
+        loadingManagerMap.forEach { (activityKey, manager) ->
+            sb.append("Activity Key: $activityKey\n")
+            sb.append("Dialog Count: ${manager.mLoadingDialogList.size}\n")
+            sb.append("Active Tasks: ${manager.mLoadingDialogList.count { it.taskJob?.isActive() == true }}\n")
+            sb.append("----------------------------------------\n")
         }
         return sb.toString()
     }

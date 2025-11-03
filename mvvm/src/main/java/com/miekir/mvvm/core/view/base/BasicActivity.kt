@@ -12,7 +12,6 @@ import android.view.inputmethod.InputMethodManager
 import android.widget.EditText
 import androidx.activity.result.ActivityResultCallback
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.annotation.MainThread
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentOnAttachListener
@@ -109,9 +108,11 @@ abstract class BasicActivity : AppCompatActivity(), IView {
     protected var mSavedInstanceState: Bundle? = null
 
     /**
-     * 用于恢复加载框
+     * Activity的唯一标识，用于LoadingHelper中的key
+     * 在Activity创建时生成，配置变更时通过savedInstanceState保持
      */
-    val loadingViewModel by viewModels<LoadingViewModel>()
+    private var _activityKey: String = ""
+    internal val activityKey: String get() = _activityKey
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 系统调节字体大小不影响本APP，必须放到super.onCreate前面
@@ -122,8 +123,11 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         mSavedInstanceState = savedInstanceState
         supportFragmentManager.addFragmentOnAttachListener(fragmentAttachListener)
         
+        // 初始化或恢复Activity的唯一标识
+        _activityKey = savedInstanceState?.getString("ACTIVITY_KEY") ?: "${javaClass.name}_${System.currentTimeMillis()}"
+        
         // 将当前Activity关联到LoadingManager
-        LoadingHelper.getOrCreateManager(loadingViewModel).attachActivity(this)
+        LoadingHelper.getOrCreateManager(_activityKey).attachActivity(this)
         
         //进入页面隐藏输入框
         //window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN)
@@ -134,7 +138,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      * Activity生命周期重建，如旋转屏幕等，需要重建对话框，防止崩溃
      */
     private fun onRestoreLoading() {
-        val loadingManager = LoadingHelper.getManager(loadingViewModel) ?: return
+        val loadingManager = LoadingHelper.getManager(_activityKey) ?: return
         if (!enableTaskLoadingRecreate() || loadingManager.mLoadingDialogList.isEmpty()) {
             return
         }
@@ -292,6 +296,9 @@ abstract class BasicActivity : AppCompatActivity(), IView {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        // 保存Activity的唯一标识，用于配置变更后的数据恢复
+        outState.putString("ACTIVITY_KEY", _activityKey)
+        
         if (enableHistoryOutState()) {
             // 无论界面是否包含Fragment都允许保存数据进行重建，可能会数据混乱
             super.onSaveInstanceState(outState)
@@ -376,7 +383,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         loadingDialogMap.clear()
         
         // 通知LoadingHelper当前Activity即将销毁
-        LoadingHelper.onActivityDestroy(loadingViewModel, this, isFinishing)
+        LoadingHelper.onActivityDestroy(_activityKey, this, isFinishing)
         
         super.onDestroy()
         supportFragmentManager.removeFragmentOnAttachListener(fragmentAttachListener)
@@ -408,7 +415,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         dialog.setOnCancelListener {
             if (dialogData.loadingType != LoadingType.VISIBLE_ALONE) {
                 dialogData.taskJob?.cancel()
-                LoadingHelper.getManager(loadingViewModel)?.removeLoadingDialogData(dialogData)
+                LoadingHelper.getManager(_activityKey)?.removeLoadingDialogData(dialogData)
                 dismissLoading(realLoading)
             }
         }
@@ -416,7 +423,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         // 使用单次观察者，避免重复观察和内存泄漏
         dialogData.completeLiveData.observe(this) { completed ->
             if (completed == true) {
-                LoadingHelper.getManager(loadingViewModel)?.removeLoadingDialogData(dialogData)
+                LoadingHelper.getManager(_activityKey)?.removeLoadingDialogData(dialogData)
                 dismissLoading(realLoading)
             }
         }

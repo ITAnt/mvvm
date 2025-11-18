@@ -9,7 +9,7 @@ import java.util.concurrent.CopyOnWriteArrayList
  * 加载对话框管理器，不继承ViewModel，避免内存泄漏
  * 实际的业务逻辑都在这里实现
  */
-class LoadingManager {
+class LoadingWrap {
     /**
      * 与Activity关联的加载框列表
      */

@@ -134,6 +134,24 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         onRestoreLoading()
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        // 保存Activity的唯一标识，用于配置变更后的数据恢复
+        outState.putString("ACTIVITY_KEY", _activityKey)
+
+        if (enableHistoryOutState()) {
+            // 无论界面是否包含Fragment都允许保存数据进行重建，可能会数据混乱
+            super.onSaveInstanceState(outState)
+        } else {
+            if (containsFragments) {
+                // 界面包含Fragment时不使用旧数据重建
+                super.onSaveInstanceState(Bundle())
+            } else {
+                // 界面不包含Fragment时使用旧数据重建（原生默认）
+                super.onSaveInstanceState(outState)
+            }
+        }
+    }
+
     /**
      * Activity生命周期重建，如旋转屏幕等，需要重建对话框，防止崩溃
      */
@@ -147,7 +165,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         val dialogList = ArrayList(loadingManager.mLoadingDialogList)
         for (dialogData in dialogList) {
             dialogData.taskJob?.let { job ->
-                if (job.isActive() && dialogData.completeLiveData.value != true) {
+                if (job.isActive() && dialogData.completeLiveData.value != true && dialogData.loadingType != LoadingType.INVISIBLE) {
                     val taskLoading = MvvmManager.getInstance().newTaskLoading()
                     showLoading(taskLoading, dialogData)
                 } else {
@@ -295,24 +313,6 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         return false
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        // 保存Activity的唯一标识，用于配置变更后的数据恢复
-        outState.putString("ACTIVITY_KEY", _activityKey)
-        
-        if (enableHistoryOutState()) {
-            // 无论界面是否包含Fragment都允许保存数据进行重建，可能会数据混乱
-            super.onSaveInstanceState(outState)
-        } else {
-            if (containsFragments) {
-                // 界面包含Fragment时不使用旧数据重建
-                super.onSaveInstanceState(Bundle())
-            } else {
-                // 界面不包含Fragment时使用旧数据重建（原生默认）
-                super.onSaveInstanceState(outState)
-            }
-        }
-    }
-
     /**
      * 点击空白处隐藏软键盘，需要在根布局配置
      * android:focusable="true"
@@ -417,6 +417,8 @@ abstract class BasicActivity : AppCompatActivity(), IView {
                 dialogData.taskJob?.cancel()
                 LoadingHelper.getManager(_activityKey)?.removeLoadingDialogData(dialogData)
                 dismissLoading(realLoading)
+            } else {
+                dialogData.loadingType = LoadingType.INVISIBLE
             }
         }
         realLoading.show()

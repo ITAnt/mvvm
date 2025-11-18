@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.miekir.mvvm.context.GlobalContext
 import com.miekir.mvvm.core.vm.base.BaseViewModel
+import com.miekir.mvvm.exception.CancelException
 import com.miekir.mvvm.exception.TaskException
 import com.miekir.mvvm.log.L
 import com.miekir.mvvm.task.net.NetResponse
@@ -41,6 +42,7 @@ fun <T> ViewModel.launchModelTask(
     onFailure: ((code: Int, message: String, exception: TaskException) -> Unit)? = null,
     onCancel: (() -> Unit)? = null,
     onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,
+    onDuplicate: (() -> Unit)? = null,
     tag: String? = null): TaskJob {
     val currentViewModel = this
     if (currentViewModel is BaseViewModel && !TextUtils.isEmpty(tag)) {
@@ -48,6 +50,7 @@ fun <T> ViewModel.launchModelTask(
         if (lastTaskJob != null) {
             if (lastTaskJob.job?.isCompleted != true && lastTaskJob.job?.isCancelled != true) {
                 lastTaskJob.firstLaunch = false
+                onDuplicate?.invoke()
                 return lastTaskJob
             }
         }

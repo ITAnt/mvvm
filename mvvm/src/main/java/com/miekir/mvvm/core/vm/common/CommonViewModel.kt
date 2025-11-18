@@ -3,7 +3,7 @@ package com.miekir.mvvm.core.vm.common
 import com.miekir.mvvm.context.GlobalContext
 import com.miekir.mvvm.exception.TaskException
 import com.miekir.mvvm.log.L
-import com.miekir.mvvm.task.CancelException
+import com.miekir.mvvm.exception.CancelException
 import com.miekir.mvvm.task.TaskJob
 import com.miekir.mvvm.task.net.NetResponse
 import kotlinx.coroutines.CoroutineExceptionHandler

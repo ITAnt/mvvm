@@ -1,15 +1,15 @@
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 
 android {
-    compileSdkVersion Config.compileSdk
+    namespace 'com.miekir.mt'
+    compileSdk Config.compileSdk
     buildToolsVersion Config.buildTools
 
     defaultConfig {
         applicationId "com.miekir.mt"
-        minSdkVersion Config.minSdk
-        targetSdkVersion Config.targetSdk
+        minSdk Config.minSdk
+        targetSdk Config.targetSdk
         versionCode 1
         versionName "1.0"
 
@@ -40,9 +40,9 @@ android {
         }
 
         release {
-            debuggable true
+            debuggable false
             // 混淆代码
-            //minifyEnabled true
+            minifyEnabled true
             // 缩减资源
             //shrinkResources true
             signingConfig signingConfigs.config
@@ -89,8 +89,12 @@ android {
 //    }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    
+    kotlinOptions {
+        jvmTarget = '11'
     }
 
     // 开启ViewBinding
@@ -99,6 +103,7 @@ android {
 //    }
     buildFeatures{
         viewBinding = true
+        buildConfig = true
     }
 
     dataBinding {
@@ -127,4 +132,6 @@ dependencies {
     // 调试过程中可以在通知栏查看详细的网络请求，OPPO手机Android11 debug不显示是因为需要手动打开通知权限
     debugImplementation 'com.readystatesoftware.chuck:library:1.1.0'
     releaseImplementation 'com.readystatesoftware.chuck:library-no-op:1.1.0'
+
+    debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.14'
 }

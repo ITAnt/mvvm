@@ -1,0 +1,362 @@
+//package com.itant.task.core
+//
+//import com.itant.task.exception.CancelException
+//import com.itant.task.exception.TaskException
+//import com.itant.task.log.L
+//import com.itant.task.net.NetResponse
+//import kotlinx.coroutines.CancellationException
+//import kotlinx.coroutines.flow.MutableStateFlow
+//import java.util.concurrent.CopyOnWriteArraySet
+//
+///**
+// * 任务状态
+// */
+//sealed class TaskStatus<out T> {
+//    data object Idle : TaskStatus<Nothing>()
+//    data class Loading(val isDuplicate: Boolean = false) : TaskStatus<Nothing>()
+//    data class Success<T>(val data: T) : TaskStatus<T>()
+//    data class Failure(val exception: TaskException) : TaskStatus<Nothing>()
+//}
+//
+///**
+// * 任务管理器
+// */
+//private object TaskManager {
+//    private val activeTasks = CopyOnWriteArraySet<String>()
+//
+//    fun isTaskActive(tag: String?): Boolean {
+//        return tag != null && tag in activeTasks
+//    }
+//
+//    fun addTask(tag: String?) {
+//        tag?.let { activeTasks.add(it) }
+//    }
+//
+//    fun removeTask(tag: String?) {
+//        tag?.let { activeTasks.remove(it) }
+//    }
+//}
+//
+///**
+// * 方案1：在fold中处理所有逻辑（推荐）✅
+// *
+// * 优点：
+// * - 代码更简洁
+// * - 逻辑集中在fold中
+// * - 清理代码（removeTask）在一个地方
+// */
+//suspend fun <T> startTask(
+//    taskBody: suspend () -> T,
+//    flow: MutableStateFlow<TaskStatus<T>>? = null,
+//    tag: String? = null
+//): Result<T> {
+//    // 检查重复任务
+//    if (TaskManager.isTaskActive(tag)) {
+//        L.w("Task with tag '$tag' is already running")
+//        flow?.emit(TaskStatus.Loading(isDuplicate = true))
+//        return Result.failure(TaskException("Task is already running"))
+//    }
+//
+//    // 添加任务标签
+//    TaskManager.addTask(tag)
+//
+//    // 发送加载状态
+//    flow?.emit(TaskStatus.Loading(isDuplicate = false))
+//
+//    // 执行任务
+//    val result = runCatching {
+//        val data = taskBody.invoke()
+//
+//        // 如果是网络响应，验证响应
+//        if (data is NetResponse) {
+//            data.valid()
+//        }
+//
+//        data
+//    }
+//
+//    // 在fold中处理所有逻辑
+//    return result.fold(
+//        onSuccess = { data ->
+//            L.d("Task succeeded: $data")
+//
+//            // 发送成功状态
+//            flow?.emit(TaskStatus.Success(data))
+//
+//            // 清理任务标签
+//            TaskManager.removeTask(tag)
+//
+//            // 返回成功结果
+//            Result.success(data)
+//        },
+//        onFailure = { exception ->
+//            L.e("Task failed: $exception")
+//
+//            // 处理取消异常
+//            if (exception is CancellationException) {
+//                L.d("Task cancelled")
+//
+//                // 清理任务标签
+//                TaskManager.removeTask(tag)
+//
+//                // 重新抛出（不发送状态，因为任务被取消了）
+//                throw exception
+//            }
+//
+//            // 处理其他异常
+//            val taskException = if (exception is TaskException) {
+//                exception
+//            } else {
+//                TaskException(exception)
+//            }
+//
+//            // 发送失败状态
+//            flow?.emit(TaskStatus.Failure(taskException))
+//
+//            // 清理任务标签
+//            TaskManager.removeTask(tag)
+//
+//            // 返回失败结果
+//            Result.failure(taskException)
+//        }
+//    )
+//}
+//
+///**
+// * 方案2：使用finally确保清理（更安全）✅✅ 不想在多个case各自执行相同的代码逻辑，方法①：放到finally里；方法②：使用AutoCloseable自动清理
+// *
+// * 优点：
+// * - 无论如何都会清理
+// * - 即使fold中抛出异常也能清理
+// * - 更符合资源管理最佳实践
+// */
+//suspend fun <T> startTaskSafe(
+//    taskBody: suspend () -> T,
+//    flow: MutableStateFlow<TaskStatus<T>>? = null,
+//    tag: String? = null
+//): Result<T> {
+//    // 检查重复任务
+//    if (TaskManager.isTaskActive(tag)) {
+//        L.w("Task with tag '$tag' is already running")
+//        flow?.emit(TaskStatus.Loading(isDuplicate = true))
+//        return Result.failure(TaskException("Task is already running"))
+//    }
+//
+//    // 添加任务标签
+//    TaskManager.addTask(tag)
+//
+//    try {
+//        // 发送加载状态
+//        flow?.emit(TaskStatus.Loading(isDuplicate = false))
+//
+//        // 执行任务
+//        val result = runCatching {
+//            val data = taskBody.invoke()
+//
+//            if (data is NetResponse) {
+//                data.valid()
+//            }
+//
+//            data
+//        }
+//
+//        // 在fold中处理逻辑
+//        return result.fold(
+//            onSuccess = { data ->
+//                L.d("Task succeeded: $data")
+//                flow?.emit(TaskStatus.Success(data))
+//                Result.success(data)
+//            },
+//            onFailure = { exception ->
+//                L.e("Task failed: $exception")
+//
+//                // 处理取消异常
+//                if (exception is CancellationException) {
+//                    L.d("Task cancelled")
+//                    throw exception  // 重新抛出
+//                }
+//
+//                // 处理其他异常
+//                val taskException = if (exception is TaskException) {
+//                    exception
+//                } else {
+//                    TaskException(exception)
+//                }
+//
+//                flow?.emit(TaskStatus.Failure(taskException))
+//                Result.failure(taskException)
+//            }
+//        )
+//    } finally {
+//        // 无论如何都清理任务标签
+//        TaskManager.removeTask(tag)
+//        L.d("Task cleaned up: $tag")
+//    }
+//}
+//
+///**
+// * 方案3：使用use模式（最优雅）✅✅✅
+// *
+// * 优点：
+// * - 最优雅的资源管理
+// * - 自动清理
+// * - 符合Kotlin惯用法
+// */
+//private class TaskScope(private val tag: String?) : AutoCloseable {
+//    init {
+//        TaskManager.addTask(tag)
+//    }
+//
+//    override fun close() {
+//        TaskManager.removeTask(tag)
+//        L.d("Task cleaned up: $tag")
+//    }
+//}
+//
+//suspend fun <T> startTaskElegant(
+//    taskBody: suspend () -> T,
+//    flow: MutableStateFlow<TaskStatus<T>>? = null,
+//    tag: String? = null
+//): Result<T> {
+//    // 检查重复任务
+//    if (TaskManager.isTaskActive(tag)) {
+//        L.w("Task with tag '$tag' is already running")
+//        flow?.emit(TaskStatus.Loading(isDuplicate = true))
+//        return Result.failure(TaskException("Task is already running"))
+//    }
+//
+//    // 使用use自动管理任务生命周期
+//    return TaskScope(tag).use {
+//        // 发送加载状态
+//        flow?.emit(TaskStatus.Loading(isDuplicate = false))
+//
+//        // 执行任务
+//        val result = runCatching {
+//            val data = taskBody.invoke()
+//
+//            if (data is NetResponse) {
+//                data.valid()
+//            }
+//
+//            data
+//        }
+//
+//        // 处理结果
+//        result.fold(
+//            onSuccess = { data ->
+//                L.d("Task succeeded: $data")
+//                flow?.emit(TaskStatus.Success(data))
+//                Result.success(data)
+//            },
+//            onFailure = { exception ->
+//                L.e("Task failed: $exception")
+//
+//                if (exception is CancellationException) {
+//                    L.d("Task cancelled")
+//                    throw exception
+//                }
+//
+//                val taskException = if (exception is TaskException) {
+//                    exception
+//                } else {
+//                    TaskException(exception)
+//                }
+//
+//                flow?.emit(TaskStatus.Failure(taskException))
+//                Result.failure(taskException)
+//            }
+//        )
+//    }  // TaskScope.close() 自动调用，清理任务标签
+//}
+//
+//// ============================================
+//// 对比总结
+//// ============================================
+//
+///**
+// * 原始版本：
+// * - 在fold外部使用onSuccess/onFailure发送状态
+// * - 在fold外部清理任务标签
+// * - 代码分散
+// *
+// * 方案1（在fold中处理）：
+// * - 在fold内部发送状态
+// * - 在fold内部清理任务标签
+// * - 代码集中，但有重复的removeTask调用
+// *
+// * 方案2（使用finally）：
+// * - 在fold内部发送状态
+// * - 在finally中清理任务标签
+// * - 更安全，无论如何都会清理
+// * - 推荐用于生产环境 ✅
+// *
+// * 方案3（使用use）：
+// * - 在fold内部发送状态
+// * - 使用AutoCloseable自动清理
+// * - 最优雅，符合Kotlin惯用法
+// * - 最推荐 ✅✅✅
+// */
+//
+//// ============================================
+//// 使用示例
+//// ============================================
+//
+///**
+// * ViewModel示例
+// */
+///*
+//class MyViewModel : ViewModel() {
+//    private val _taskStatus = MutableStateFlow<TaskStatus<String>>(TaskStatus.Idle)
+//    val taskStatus: StateFlow<TaskStatus<String>> = _taskStatus.asStateFlow()
+//
+//    fun loadData() {
+//        viewModelScope.launch {
+//            // 三种方案都可以使用
+//            startTask(
+//                taskBody = { repository.fetchData() },
+//                flow = _taskStatus,
+//                tag = "load_data"
+//            )
+//
+//            // 或者
+//            startTaskSafe(
+//                taskBody = { repository.fetchData() },
+//                flow = _taskStatus,
+//                tag = "load_data"
+//            )
+//
+//            // 或者（推荐）
+//            startTaskElegant(
+//                taskBody = { repository.fetchData() },
+//                flow = _taskStatus,
+//                tag = "load_data"
+//            )
+//        }
+//    }
+//}
+//*/
+//
+//// ============================================
+//// 性能对比
+//// ============================================
+//
+///**
+// * 方案1：在fold中处理
+// * - 性能：⭐⭐⭐⭐⭐
+// * - 安全性：⭐⭐⭐⭐ (如果fold抛出异常，可能不会清理)
+// * - 可读性：⭐⭐⭐⭐
+// * - 推荐度：⭐⭐⭐⭐
+// *
+// * 方案2：使用finally
+// * - 性能：⭐⭐⭐⭐⭐
+// * - 安全性：⭐⭐⭐⭐⭐ (一定会清理)
+// * - 可读性：⭐⭐⭐⭐⭐
+// * - 推荐度：⭐⭐⭐⭐⭐
+// *
+// * 方案3：使用use
+// * - 性能：⭐⭐⭐⭐⭐
+// * - 安全性：⭐⭐⭐⭐⭐ (一定会清理)
+// * - 可读性：⭐⭐⭐⭐⭐
+// * - 优雅度：⭐⭐⭐⭐⭐
+// * - 推荐度：⭐⭐⭐⭐⭐ (最推荐)
+// */

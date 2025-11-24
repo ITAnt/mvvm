@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.View
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
+import com.miekir.mvvm.core.view.IView
 
 /**
  * 基础Fragment，不做屏幕适配

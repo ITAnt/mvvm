@@ -1,7 +1,6 @@
 package com.miekir.mvvm.core.view.base
 
-import android.app.Dialog
-import android.content.Context
+import android.app.Activity
 import android.content.Intent
 import android.graphics.Rect
 import android.os.Build
@@ -15,14 +14,18 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.MainThread
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentOnAttachListener
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.MutableLiveData
 import com.miekir.mvvm.MvvmManager
-import com.miekir.mvvm.core.view.result.ActivityResult
-import com.miekir.mvvm.extension.applyHighRefreshRate
+import com.miekir.mvvm.core.view.IView
+import com.miekir.mvvm.core.view.ResultDetail
 import com.miekir.mvvm.log.L
-import com.miekir.mvvm.widget.loading.DialogData
-import com.miekir.mvvm.widget.loading.LoadingType
-import com.miekir.mvvm.widget.loading.TaskLoading
-import java.util.concurrent.ConcurrentHashMap
+import com.miekir.mvvm.task.core.viewModel
+import com.miekir.mvvm.task.loading.DialogData
+import com.miekir.mvvm.task.loading.LoadingType
+import com.miekir.mvvm.task.loading.LoadingViewModel
+import com.miekir.mvvm.task.loading.TaskLoading
 import java.util.concurrent.LinkedBlockingQueue
 import kotlin.math.absoluteValue
 
@@ -30,8 +33,6 @@ import kotlin.math.absoluteValue
  * 基础Activity，不做屏幕适配
  */
 abstract class BasicActivity : AppCompatActivity(), IView {
-    private val loadingDialogMap = ConcurrentHashMap< TaskLoading, Dialog>()
-
     /**
      * 权限申请
      */
@@ -68,20 +69,20 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      * 代替startActivityForResult
      */
     @Volatile
-    private var mActivityResultCallback: ActivityResult? = null
+    private var mResultDetailCallback: ResultDetail? = null
     private val mActivityQueue = LinkedBlockingQueue<Runnable>()
     private val mActivityResultLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult(), ActivityResultCallback { result ->
-        if (mActivityResultCallback == null) {
+        if (mResultDetailCallback == null) {
             return@ActivityResultCallback
         }
         if (result.resultCode == RESULT_OK) {
-            mActivityResultCallback?.onResultOK(result.data)
+            mResultDetailCallback?.onResultOK(result.data)
         } else {
-            mActivityResultCallback?.onResultFail(result.resultCode)
+            mResultDetailCallback?.onResultFail(result.resultCode)
         }
-        mActivityResultCallback?.onResult()
+        mResultDetailCallback?.onResult()
 
-        mActivityResultCallback = null
+        mResultDetailCallback = null
         waitingActivityResult = false
         mActivityQueue.poll()?.run()
     })
@@ -106,13 +107,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      * savedInstanceState == null表示Activity第一次创建，部分情况如屏幕旋转Activity会二次创建
      */
     protected var mSavedInstanceState: Bundle? = null
-
-    /**
-     * Activity的唯一标识，用于LoadingHelper中的key
-     * 在Activity创建时生成，配置变更时通过savedInstanceState保持
-     */
-    private var _activityKey: String = ""
-    internal val activityKey: String get() = _activityKey
+    internal val loadingViewModel: LoadingViewModel by viewModel()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         // 系统调节字体大小不影响本APP，必须放到super.onCreate前面
@@ -122,13 +117,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         super.onCreate(savedInstanceState)
         mSavedInstanceState = savedInstanceState
         supportFragmentManager.addFragmentOnAttachListener(fragmentAttachListener)
-        
-        // 初始化或恢复Activity的唯一标识
-        _activityKey = savedInstanceState?.getString("ACTIVITY_KEY") ?: "${javaClass.name}_${System.currentTimeMillis()}"
-        
-        // 将当前Activity关联到LoadingManager
-        LoadingHelper.getOrCreateManager(_activityKey).attachActivity(this)
-        
+
         //进入页面隐藏输入框
         //window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN)
         onRestoreLoading()
@@ -136,8 +125,6 @@ abstract class BasicActivity : AppCompatActivity(), IView {
 
     override fun onSaveInstanceState(outState: Bundle) {
         // 保存Activity的唯一标识，用于配置变更后的数据恢复
-        outState.putString("ACTIVITY_KEY", _activityKey)
-
         if (enableHistoryOutState()) {
             // 无论界面是否包含Fragment都允许保存数据进行重建，可能会数据混乱
             super.onSaveInstanceState(outState)
@@ -151,32 +138,37 @@ abstract class BasicActivity : AppCompatActivity(), IView {
             }
         }
     }
-
     /**
      * Activity生命周期重建，如旋转屏幕等，需要重建对话框，防止崩溃
      */
     private fun onRestoreLoading() {
-        val loadingManager = LoadingHelper.getManager(_activityKey) ?: return
-        if (!enableTaskLoadingRecreate() || loadingManager.mLoadingDialogList.isEmpty()) {
-            return
-        }
-
-        // 恢复任务弹窗
-        val dialogList = ArrayList(loadingManager.mLoadingDialogList)
-        for (dialogData in dialogList) {
-            dialogData.taskJob?.let { job ->
-                if (job.isActive() && dialogData.completeLiveData.value != true && dialogData.loadingType != LoadingType.INVISIBLE) {
-                    val taskLoading = MvvmManager.getInstance().newTaskLoading()
-                    showLoading(taskLoading, dialogData)
+        for (loadingLiveData in loadingViewModel.dialogLiveDataList) {
+            if (loadingLiveData.value?.loadingType == LoadingType.INVISIBLE) {
+                continue
+            }
+            var realLoading: TaskLoading? = null
+            loadingLiveData.observe(this) {
+                if (it.loadingType == LoadingType.INVISIBLE) {
+                    loadingLiveData.removeObservers(this)
+                    loadingViewModel.dialogLiveDataList.remove(loadingLiveData)
+                    realLoading?.dismiss()
                 } else {
-                    loadingManager.removeLoadingDialogData(dialogData)
+                    // 显示弹窗
+                    realLoading = loadingLiveData.value?.loadingClazz?.newInstance()
+                    realLoading?.let {loading ->
+                        showLoading(loading, loadingLiveData)
+                    }
                 }
-            } ?: run {
-                loadingManager.removeLoadingDialogData(dialogData)
             }
         }
+        lifecycle.addObserver(LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_DESTROY) {
+                for (loadingLiveData in loadingViewModel.dialogLiveDataList) {
+                    loadingLiveData.removeObservers(this@BasicActivity)
+                }
+            }
+        })
     }
-
 
     override fun startActivity(intent: Intent) {
         super.startActivity(intent)
@@ -229,7 +221,6 @@ abstract class BasicActivity : AppCompatActivity(), IView {
             MvvmManager.getInstance().activityAnimation?.exitAnimation(this)
         }
     }
-
     override fun onResume() {
         super.onResume()
         if (!waitingPermissionResult) {
@@ -275,17 +266,17 @@ abstract class BasicActivity : AppCompatActivity(), IView {
         }
     }
 
-    fun openActivityForResult(intent: Intent, result: ActivityResult) {
+    fun openActivityForResult(intent: Intent, result: ResultDetail) {
         // 在主线程发起申请
         if (/*(lifecycle.currentState == Lifecycle.State.RESUMED || lifecycle.currentState == Lifecycle.State.STARTED) && */!waitingActivityResult) {
             waitingActivityResult = true
-            mActivityResultCallback = result
+            mResultDetailCallback = result
             try {
                 mActivityResultLauncher.launch(intent)
             } catch (e: Exception) {
                 L.e(e.toString())
                 waitingActivityResult = false
-                mActivityResultCallback = null
+                mResultDetailCallback = null
                 mActivityQueue.poll()?.run()
                 throw e
             }
@@ -339,7 +330,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
                     !outRect.contains(event.rawX.toInt(), event.rawY.toInt())) {
                     lastHideMillis = System.currentTimeMillis()
                     currentFocusedView.clearFocus()
-                    (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)?.run {
+                    (getSystemService(INPUT_METHOD_SERVICE) as? InputMethodManager)?.run {
                         hideSoftInputFromWindow(currentFocusedView.getWindowToken(), 0)
                     }
                 }
@@ -376,58 +367,60 @@ abstract class BasicActivity : AppCompatActivity(), IView {
      * 导致内存泄露，如果一段时间后调用dismiss，会闪退，所以应该发现旋转时马上dismiss
      */
     override fun onDestroy() {
-        for ((taskLoading, dialog) in loadingDialogMap) {
-            dialog.setOnCancelListener(null)
-            taskLoading.dismiss()
-        }
-        loadingDialogMap.clear()
-        
-        // 通知LoadingHelper当前Activity即将销毁
-        LoadingHelper.onActivityDestroy(_activityKey, this, isFinishing)
-        
         super.onDestroy()
         supportFragmentManager.removeFragmentOnAttachListener(fragmentAttachListener)
         mPermissionQueue.clear()
         mActivityQueue.clear()
     }
 
-    /**
-     * 仅仅关闭对话框，不销毁任务进程
-     */
-    internal fun dismissLoading(taskLoading: TaskLoading) {
-        loadingDialogMap[taskLoading]?.setOnCancelListener(null)
-        taskLoading.dismiss()
-        loadingDialogMap.remove(taskLoading)
-    }
-
     @MainThread
-    internal fun showLoading(realLoading: TaskLoading, dialogData: DialogData) {
-        realLoading.mDialogData = dialogData
+    internal fun showLoading(realLoading: TaskLoading, liveData: MutableLiveData<DialogData>) {
+        if (liveData.value?.loadingType == LoadingType.INVISIBLE) {
+            return
+        }
+        realLoading.mDialogData = liveData.value
         val dialog = realLoading.newLoadingDialog(this)
         realLoading.mDialog = dialog
-        loadingDialogMap[realLoading] = dialog
         dialog.setCanceledOnTouchOutside(false)
-        if (dialogData.loadingType == LoadingType.STICKY) {
+        if (liveData.value?.loadingType == LoadingType.STICKY) {
             dialog.setCancelable(false)
         } else {
             dialog.setCancelable(true)
         }
         dialog.setOnCancelListener {
-            if (dialogData.loadingType != LoadingType.VISIBLE_ALONE) {
-                dialogData.taskJob?.cancel()
-                LoadingHelper.getManager(_activityKey)?.removeLoadingDialogData(dialogData)
-                dismissLoading(realLoading)
+            if (liveData.value?.loadingType != LoadingType.VISIBLE_ALONE) {
+                // 任务取消，加载框也消失
+                liveData.value?.taskJob?.cancel()
             } else {
-                dialogData.loadingType = LoadingType.INVISIBLE
+                // 仅仅让加载框消失
+                liveData.value?.let {
+                    liveData.postValue(it.copy(loadingType = LoadingType.INVISIBLE,))
+                }
             }
         }
         realLoading.show()
-        // 使用单次观察者，避免重复观察和内存泄漏
-        dialogData.completeLiveData.observe(this) { completed ->
-            if (completed == true) {
-                LoadingHelper.getManager(_activityKey)?.removeLoadingDialogData(dialogData)
-                dismissLoading(realLoading)
-            }
+    }
+}
+
+/**
+ * 启用高刷新率，如丝流畅
+ * M 是 6.0，6.0修改了新的api，并且就已经支持修改window的刷新率了。但是6.0那会儿，也没什么手机支持高刷新率吧，
+ * 所以也没什么人注意它。我更倾向于直接判断 O，也就是 Android 8.0，我觉得这个时候支持高刷新率的手机已经开始了。
+ */
+fun Activity.applyHighRefreshRate() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        // 获取系统window支持的模式
+        val modes = window.windowManager.defaultDisplay.supportedModes
+        // 对获取的模式，基于刷新率的大小进行排序，从小到大排序
+        modes.sortBy {
+            it.refreshRate
+        }
+
+        window.let {
+            val lp = it.attributes
+            // 取出最大的那一个刷新率，直接设置给window
+            lp.preferredDisplayModeId = modes.last().modeId
+            it.attributes = lp
         }
     }
 }

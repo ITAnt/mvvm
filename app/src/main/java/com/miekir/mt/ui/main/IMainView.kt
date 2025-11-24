@@ -1,6 +1,6 @@
 package com.miekir.mt.ui.main
 
-import com.miekir.mvvm.core.view.base.IView
+import com.miekir.mvvm.core.view.IView
 
 
 interface IMainView : IView {

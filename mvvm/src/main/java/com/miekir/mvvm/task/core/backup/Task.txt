@@ -1,0 +1,69 @@
+//package com.itant.task.core
+//
+//import com.itant.task.exception.CancelException
+//import com.itant.task.exception.TaskException
+//import com.itant.task.log.L
+//import com.itant.task.net.NetResponse
+//import kotlinx.coroutines.CancellationException
+//import kotlinx.coroutines.flow.MutableStateFlow
+//import java.util.concurrent.CopyOnWriteArraySet
+//import kotlin.random.Random
+//
+///**
+// * 初始化、进行中（包括重复提交）、成功、失败，完成
+// */
+//interface TaskStatus {
+//    object Idle: TaskStatus
+//    class Loading(val duplicate: Boolean = false): TaskStatus
+//    class Success<D>(val data: D): TaskStatus
+//    class Failure(val exception: TaskException): TaskStatus
+//    object Complete: TaskStatus
+//}
+//
+//private val taskTagList = CopyOnWriteArraySet<String>()
+//suspend fun <T> startTask(
+//    taskBody: suspend () -> T,
+//    flow: MutableStateFlow<TaskStatus>? = null,
+//    tag: String? = null
+//) {
+//    // 重复任务
+//    if (taskTagList.contains(tag)) {
+//        flow?.emit(TaskStatus.Loading(true))
+//        return
+//    }
+//
+//    // 新任务
+//    flow?.emit(TaskStatus.Loading())
+//
+//    // 执行任务
+//    runCatching {
+//        val result = taskBody.invoke()
+//        if (result is NetResponse) {
+//            result.valid()
+//        }
+//        result
+//    }.onSuccess {
+//        flow?.emit(TaskStatus.Success(it))
+//    }.onFailure { exception ->
+//        L.e("onFailure: $exception")
+//        if (exception is CancellationException) {
+//            flow?.emit(TaskStatus.Failure(CancelException()))
+//        } else {
+//            flow?.emit(TaskStatus.Failure(TaskException(exception)))
+//        }
+//    }
+//
+//    // 移除任务标签
+//    tag?.let {
+//        taskTagList.remove(it)
+//    }
+//    flow?.emit(TaskStatus.Complete)
+//}
+//
+//fun method1(): Result<Int> {
+//    if (Random(10).nextInt() == 0) {
+//        return Result.success(1)
+//    } else {
+//        return Result.failure(Exception("method1 error"))
+//    }
+//}

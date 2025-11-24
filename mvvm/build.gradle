@@ -1,15 +1,16 @@
 apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
-apply plugin: 'kotlin-android-extensions'
 apply from: 'upload.gradle'
+apply plugin: 'maven-publish'
 
 android {
-    compileSdkVersion Config.compileSdk
+    namespace 'com.miekir.mvvm'
+    compileSdk Config.compileSdk
     buildToolsVersion Config.buildTools
 
     defaultConfig {
-        minSdkVersion Config.minSdk
-        targetSdkVersion Config.targetSdk
+        minSdk Config.minSdk
+        targetSdk Config.targetSdk
         versionCode 1
         versionName "1.0"
 
@@ -32,10 +33,15 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+    
+    kotlinOptions {
+        jvmTarget = '11'
     }
 }
+
 
 // module-Tasks-other-debugSourcesJar，生成的源码jar在D:\MiekirGit\APP\MvpGo\mvp\build\libs
 /*// 打包源码jar，默认生成路径：build/libs/*-sources.jar，然后查看aar源码时，Choose Sources选中这个jar就可以查看注释了
@@ -80,36 +86,112 @@ project.tasks.whenTaskAdded { Task theTask ->
     }
 }*/
 
+// AGP 8.x 不再支持直接修改 outputFileName
+// 如果需要自定义 AAR 输出，可以在构建后手动复制
 afterEvaluate {
     android.libraryVariants.all { variant ->
-        variant.variantData.outputFactory.apkDataList.each { apkData ->
-            // 自定义输出aar路径和名称
-            def rawFileName = apkData.outputFileName
-            println("file output:${rawFileName}")
-            // "release" == buildType.name &&
-            if (rawFileName.endsWith('.aar')) {
-                def createTime = new Date().format("yyyyMMddHH", TimeZone.getTimeZone("GMT+08:00"))
-                //def aarName = "mvp_${buildType.name}_${createTime}.aar"
-                def aarName = "mvvm.aar"
-                apkData.outputFileName = aarName
-
-                // 复制aar到指定目录
-                variant.assemble.doLast {
-                    variant.outputs.all { output ->
-                        File targetAarDir = new File("${project.rootDir.absolutePath}/out_aar/${buildType.name}")
-                        println("aar output:${targetAarDir}${File.separator}${output.outputFileName}")
-                        copy {
-                            from output.outputFile
-                            into targetAarDir.getAbsolutePath()
-                        }
-
-                        //openTargetDir(targetAarDir.absolutePath)
+        variant.assemble.doLast {
+            // 复制 AAR 到指定目录
+            variant.outputs.all { output ->
+                if (output.outputFile.name.endsWith('.aar')) {
+                    File targetAarDir = new File("${project.rootDir.absolutePath}/out_aar/${variant.buildType.name}")
+                    targetAarDir.mkdirs()
+                    
+                    File targetFile = new File(targetAarDir, "mvvm.aar")
+                    println("Copying AAR to: ${targetFile.absolutePath}")
+                    
+                    copy {
+                        from output.outputFile
+                        into targetAarDir
+                        rename { "mvvm.aar" }
                     }
+                    
+                    //openTargetDir(targetAarDir.absolutePath)
+                }
+            }
+        }
+    }
+
+    // 上传到github，需要通过秘钥引入：implementation 'io.github.itant:mvvm:1.0.01'，要先在allprojects添加：
+    /*maven {
+        url = uri("https://maven.pkg.github.com/ITant/mvvm")
+        credentials {
+            username = "ITant"
+            password = "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"
+        }
+    }*/
+
+    // 如果想通过不需要密码的方式访问（注意：此方式需要你手动将包文件（.aar和.pom）提交到仓库的 release/io/github/itant/mvvm/1.0.01 目录，里面是mvvm-1.0.01.aar和mvvm-1.0.01.pom，但注意这不是标准做法），需要添加：
+    /*maven {
+            url = uri("https://raw.githubusercontent.com/ITant/mvvm/main/release")
+    }*/
+    // 引入方式依然是：implementation 'io.github.itant:mvvm:1.0.01'
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                groupId = 'io.github.itant'
+                artifactId = 'mvvm'
+                version = '1.0.01'
+
+                // 可选：添加 POM 元数据
+                pom {
+                    name = 'mvvm'
+                    description = 'mvvm lib'
+                    url = 'https://maven.pkg.github.com/ITant/mvvm'
+
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                }
+            }
+        }
+
+        repositories {
+            maven {
+                name = "GitHubPackages"
+                url = uri("https://maven.pkg.github.com/ITant/mvvm")
+                credentials {
+                    username = "ITant"
+                    //password = project.findProperty("gpr.key") ?: System.getenv("TOKEN")
+                    password = "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"
+                }
+                // 添加 Basic 认证（可选但推荐）
+                authentication {
+                    basic(BasicAuthentication)
                 }
             }
         }
     }
 }
+
+// 打开输出的aar目录
+//def openTargetDir(String targetDir) {
+//    if (targetDir != null) {
+//        // 指定使用的操作系统对应的命令
+//        if (System.properties['os.name'].toLowerCase().contains('windows')) {
+//            exec {
+//                commandLine 'explorer', targetDir
+//                ignoreExitValue = true
+//                //if(execResult.getExitValue() == 0)
+//            }
+//        } else if (System.properties['os.name'].toLowerCase().contains('mac os x')) {
+//            exec {
+//                commandLine 'open', targetDir
+//                ignoreExitValue = true
+//            }
+//        } else {
+//            exec {
+//                commandLine 'xdg-open', targetDir
+//                ignoreExitValue = true
+//            }
+//        }
+//    }
+//}
 
 dependencies {
     api fileTree(dir: 'libs', include: ['*.jar','*.aar'])
@@ -156,6 +238,10 @@ dependencies {
     api "androidx.lifecycle:lifecycle-livedata-ktx:${Config.androidLifecycle}"
     api "androidx.lifecycle:lifecycle-runtime-ktx:${Config.androidLifecycle}"
     api "androidx.preference:preference-ktx:1.1.1"
+
+    // Kotlin Coroutines
+    api "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0"
+    api "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0"
 
     // MMKV代替Preference
 

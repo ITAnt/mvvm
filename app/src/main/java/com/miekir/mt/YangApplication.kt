@@ -2,8 +2,8 @@ package com.miekir.mt
 
 import android.app.Application
 import com.miekir.mvvm.MvvmManager
+import com.miekir.mvvm.task.loading.DefaultTaskLoading
 import com.miekir.mvvm.task.net.RetrofitManager
-import com.miekir.mvvm.widget.loading.DefaultTaskLoading
 import com.readystatesoftware.chuck.ChuckInterceptor
 
 /**

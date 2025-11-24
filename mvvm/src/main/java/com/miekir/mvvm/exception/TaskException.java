@@ -1,18 +1,21 @@
 package com.miekir.mvvm.exception;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 
 /**
  * @author : 詹子聪
- * @date : 2021/4/7 09:18
+ * date:  2021/4/7 09:18
  */
 public class TaskException extends Exception {
     private final int code;
     /**
-     * 经过ExceptionManager和ExceptionHandler处理后的异常信息
+     * 如果服务器有字符串，使用服务器的
      */
     private final String resultMessage;
+    /**
+     * 本地化错误信息字符串，方便国际化
+     */
+    private final String localMessage;
 
     public int getCode() {
         return code;
@@ -22,10 +25,14 @@ public class TaskException extends Exception {
         return resultMessage;
     }
 
+    public String getLocalMessage() {
+        return localMessage;
+    }
+
     /**
      * 原始错误信息
      */
-    private Throwable rawException;
+    private final Throwable rawException;
 
     public Throwable getRawException() {
         return rawException;
@@ -44,6 +51,7 @@ public class TaskException extends Exception {
         this.code = code;
         this.resultMessage = message;
         this.rawException = this;
+        this.localMessage = ExceptionManager.getInstance().getExceptionHandler().getMessageByCode(code);
     }
 
     public TaskException(@NonNull Throwable throwable) {
@@ -52,5 +60,6 @@ public class TaskException extends Exception {
         this.code = taskException.getCode();
         this.resultMessage = taskException.resultMessage;
         this.rawException = throwable;
+        this.localMessage = ExceptionManager.getInstance().getExceptionHandler().getMessageByCode(code);
     }
 }

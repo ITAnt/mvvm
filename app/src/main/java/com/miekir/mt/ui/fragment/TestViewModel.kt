@@ -2,8 +2,8 @@ package com.miekir.mt.ui.fragment
 
 import androidx.lifecycle.ViewModel
 import com.miekir.mvvm.log.L
-import com.miekir.mvvm.task.TaskJob
-import com.miekir.mvvm.task.launchModelTask
+import com.miekir.mvvm.task.core.TaskJob
+import com.miekir.mvvm.task.core.launchModelTask
 import kotlinx.coroutines.delay
 
 class TestViewModel: ViewModel() {

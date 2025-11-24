@@ -3,13 +3,13 @@ package com.miekir.mvvm;
 import androidx.annotation.NonNull;
 
 import com.miekir.mvvm.core.view.anim.AbstractAnimHandler;
-import com.miekir.mvvm.exception.AbstractExceptionHandler;
 import com.miekir.mvvm.exception.ExceptionManager;
+import com.miekir.mvvm.exception.handler.AbstractExceptionHandler;
 import com.miekir.mvvm.log.ILogHandler;
 import com.miekir.mvvm.log.L;
 import com.miekir.mvvm.log.LogCallback;
-import com.miekir.mvvm.widget.loading.DefaultTaskLoading;
-import com.miekir.mvvm.widget.loading.TaskLoading;
+import com.miekir.mvvm.task.loading.DefaultTaskLoading;
+import com.miekir.mvvm.task.loading.TaskLoading;
 
 /**
  * @author : 詹子聪
@@ -103,5 +103,9 @@ public class MvvmManager {
     public MvvmManager activityAnimation(AbstractAnimHandler handler) {
         this.mAnimHandler = handler;
         return this;
+    }
+
+    public Class<? extends TaskLoading> getGlobalTaskLoadingClass() {
+        return mTaskLoadingClass;
     }
 }

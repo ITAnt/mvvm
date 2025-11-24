@@ -1,7 +1,6 @@
 package com.miekir.mvvm.tools
 
 import android.view.ViewGroup
-import android.view.ViewParent
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
 import android.webkit.WebSettings
@@ -52,12 +51,12 @@ object WebTools {
 
                 // 2. 移除所有回调和客户端
                 webChromeClient = null
-                webViewClient = null
+                //webViewClient = null
 
                 // 3. 禁用JavaScript和其他功能
                 settings.javaScriptEnabled = false
                 settings.setSupportZoom(false)
-                settings.setAppCacheEnabled(false)
+                //settings.setAppCacheEnabled(false)
                 settings.domStorageEnabled = false
 
                 // 4. 清理视图层次

@@ -15,6 +15,7 @@ import androidx.annotation.NonNull;
  * @deprecated 使用屏幕适配之后，直接在xml写..sp(dp)，或@dimens/..，
  * 但是不能使用Resources.getSystem()了，因为密度已改变
  */
+@Deprecated
 public final class SizeTools {
     private SizeTools() {}
 

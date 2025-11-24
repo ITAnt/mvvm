@@ -1,2 +1,0 @@
-# mvvm
- MVVM Practice

@@ -1,0 +1,48 @@
+package com.miekir.mvvm.task.loading
+
+import android.app.Activity
+import android.app.Dialog
+
+/**
+ * @author 詹子聪
+ * date:  2021-11-30 19:47
+ */
+abstract class TaskLoading: ProgressObserver {
+    @JvmField
+    var mDialogData: DialogData? = null
+
+    @JvmField
+    var mDialog: Dialog? = null
+
+    /**
+     * 注意：在此方法中，不能为Dialog设置setOnCancelListener，因为在父类使用了该方法监听回收资源等。
+     * setOnCancelListener能监听到返回键，onDismissListener不行
+     * @return 对话框实例
+     */
+    abstract fun newLoadingDialog(activity: Activity): Dialog
+
+    /**
+     * 对话框消失时，不用再主动调用dialog的dismiss()方法
+     */
+    protected abstract fun onDismiss()
+
+    /**
+     * 对话框显示时，不用再主动调用dialog的show()方法
+     */
+    protected abstract fun onShow()
+
+    fun show() {
+        mDialog?.show()
+        onShow()
+    }
+
+    fun dismiss() {
+        onDismiss()
+        mDialog?.dismiss()
+        mDialog = null
+    }
+
+    override fun onProgress(progress: Int) {
+
+    }
+}

@@ -178,7 +178,7 @@ fun IView.withLoadingDialog(
             realLoading?.dismiss()
         } else {
             // 显示弹窗
-            realLoading = loadingClazz.newInstance()
+            realLoading = loadingClazz.getDeclaredConstructor().newInstance()
             val loading = realLoading
             if (loading != null) {
                 basicActivity.showLoading(loading, loadingLiveData)

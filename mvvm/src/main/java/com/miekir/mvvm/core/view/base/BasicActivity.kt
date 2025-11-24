@@ -154,7 +154,7 @@ abstract class BasicActivity : AppCompatActivity(), IView {
                     realLoading?.dismiss()
                 } else {
                     // 显示弹窗
-                    realLoading = loadingLiveData.value?.loadingClazz?.newInstance()
+                    realLoading = loadingLiveData.value?.loadingClazz?.getDeclaredConstructor()?.newInstance()
                     realLoading?.let {loading ->
                         showLoading(loading, loadingLiveData)
                     }

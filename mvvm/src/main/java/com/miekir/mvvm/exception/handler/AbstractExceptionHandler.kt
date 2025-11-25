@@ -1,41 +1,41 @@
-package com.miekir.mvvm.exception.handler;
+package com.miekir.mvvm.exception.handler
 
+import com.miekir.mvvm.exception.TaskException
 
-import com.miekir.mvvm.exception.TaskException;
 
 /**
  * @author : 詹子聪
  * 处理异常的类
  * date : 2021-6-25 21:46
  */
-public abstract class AbstractExceptionHandler {
+abstract class AbstractExceptionHandler {
     /**
      * 异常转结果
      * @param t 异常
      * @return 包含错误码和错误信息
      */
-    public abstract TaskException handleException(Throwable t);
+    abstract fun handleException(t: Throwable): TaskException?
 
     /**
      * @return 成功的code
      */
-    public abstract int getSuccessCode();
+    abstract val successCode: Int
 
     /**
      * @return 失败的code
      */
-    public abstract int getFailedCode();
+    abstract val failedCode: Int
 
     /**
      * @return 取消的code
      */
-    public abstract int getCancelCode();
-    public abstract int getDuplicatedCode();
+    abstract val cancelCode: Int
+    abstract val duplicatedCode: Int
 
     /**
      * 根据code获取对应的message
      * @param code 错误码
      * @return 错误信息
      */
-    public abstract String getMessageByCode(int code);
+    abstract fun getMessageByCode(code: Int, blankAble: Boolean = false): String
 }

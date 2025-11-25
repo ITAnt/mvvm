@@ -13,7 +13,12 @@ import java.net.UnknownHostException
  * 默认的异常信息处理类
  * @author Miekir
  */
-internal class DefaultExceptionHandler : AbstractExceptionHandler() {
+internal class DefaultExceptionHandler(
+    override val successCode: Int = CODE_SUCCESS,
+    override val failedCode: Int = CODE_ERROR_UNKNOWN,
+    override val cancelCode: Int = CODE_ERROR_CANCEL,
+    override val duplicatedCode: Int = CODE_DUPLICATED
+) : AbstractExceptionHandler() {
     companion object {
         private const val CODE_DUPLICATED = 1
         private const val CODE_SUCCESS = 0
@@ -44,22 +49,6 @@ internal class DefaultExceptionHandler : AbstractExceptionHandler() {
         return throwable as? TaskException ?: TaskException(getCodeByException(throwable))
     }
 
-    override fun getSuccessCode(): Int {
-        return CODE_SUCCESS
-    }
-
-    override fun getFailedCode(): Int {
-        return CODE_ERROR_UNKNOWN
-    }
-
-    override fun getCancelCode(): Int {
-        return CODE_ERROR_CANCEL
-    }
-
-    override fun getDuplicatedCode(): Int {
-        return CODE_DUPLICATED
-    }
-
     private fun getCodeByException(throwable: Throwable?): Int {
         when (throwable) {
             is HttpException -> {
@@ -87,7 +76,7 @@ internal class DefaultExceptionHandler : AbstractExceptionHandler() {
         }
     }
 
-    override fun getMessageByCode(code: Int): String {
+    override fun getMessageByCode(code: Int, blankAble: Boolean): String {
         val messageFromMap = codeMap[code]
         if (!messageFromMap.isNullOrBlank()) {
             return messageFromMap
@@ -102,6 +91,6 @@ internal class DefaultExceptionHandler : AbstractExceptionHandler() {
             return "请求被重定向到其他页面"
         }
 
-        return "未知错误"
+        return if (blankAble) "" else "未知错误"
     }
 }

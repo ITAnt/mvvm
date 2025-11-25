@@ -105,8 +105,11 @@ afterEvaluate {
                         into targetAarDir
                         rename { "mvvm.aar" }
                     }
-                    
-                    //openTargetDir(targetAarDir.absolutePath)
+                    try {
+                        openTargetDir(targetAarDir.absolutePath)
+                    } catch (Exception e) {
+                        println("openTargetDir error: ${e.message}")
+                    }
                 }
             }
         }
@@ -170,28 +173,28 @@ afterEvaluate {
 }
 
 // 打开输出的aar目录
-// def openTargetDir(String targetDir) {
-//     if (targetDir != null) {
-//         // 指定使用的操作系统对应的命令
-//         if (System.properties['os.name'].toLowerCase().contains('windows')) {
-//             exec {
-//                 commandLine 'explorer', targetDir
-//                 ignoreExitValue = true
-//                 //if(execResult.getExitValue() == 0)
-//             }
-//         } else if (System.properties['os.name'].toLowerCase().contains('mac os x')) {
-//             exec {
-//                 commandLine 'open', targetDir
-//                 ignoreExitValue = true
-//             }
-//         } else {
-//             exec {
-//                 commandLine 'xdg-open', targetDir
-//                 ignoreExitValue = true
-//             }
-//         }
-//     }
-// }
+def openTargetDir(String targetDir) {
+    if (targetDir != null) {
+        // 指定使用的操作系统对应的命令
+        if (System.properties['os.name'].toLowerCase().contains('windows')) {
+            exec {
+                commandLine 'explorer', targetDir
+                ignoreExitValue = true
+                //if(execResult.getExitValue() == 0)
+            }
+        } else if (System.properties['os.name'].toLowerCase().contains('mac os x')) {
+            exec {
+                commandLine 'open', targetDir
+                ignoreExitValue = true
+            }
+        } else {
+            exec {
+                commandLine 'xdg-open', targetDir
+                ignoreExitValue = true
+            }
+        }
+    }
+}
 
 dependencies {
     api fileTree(dir: 'libs', include: ['*.jar','*.aar'])

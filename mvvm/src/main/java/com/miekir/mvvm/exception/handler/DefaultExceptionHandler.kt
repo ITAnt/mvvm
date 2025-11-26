@@ -17,7 +17,8 @@ internal class DefaultExceptionHandler(
     override val successCode: Int = CODE_SUCCESS,
     override val failedCode: Int = CODE_ERROR_UNKNOWN,
     override val cancelCode: Int = CODE_ERROR_CANCEL,
-    override val duplicatedCode: Int = CODE_DUPLICATED
+    override val timeoutCode: Int = TIMEOUT,
+    override val duplicatedCode: Int = CODE_DUPLICATED,
 ) : AbstractExceptionHandler() {
     companion object {
         private const val CODE_DUPLICATED = 1

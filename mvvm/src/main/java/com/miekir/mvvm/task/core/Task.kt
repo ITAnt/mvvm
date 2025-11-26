@@ -1,12 +1,15 @@
 package com.miekir.mvvm.task.core
 
-import com.miekir.mvvm.exception.CancelException
-import com.miekir.mvvm.exception.ExceptionManager
 import com.miekir.mvvm.exception.TaskException
+import com.miekir.mvvm.exception.impl.CancelException
+import com.miekir.mvvm.exception.impl.DuplicateException
+import com.miekir.mvvm.exception.impl.TimeoutException
 import com.miekir.mvvm.log.L
 import com.miekir.mvvm.task.net.NetResponse
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.CopyOnWriteArraySet
 
 /**
@@ -78,13 +81,14 @@ private object TaskManager {
 suspend fun <T> startTask(
     taskBody: suspend () -> T,
     flow: MutableStateFlow<TaskStatus<T>>? = null,
+    timeoutMillis: Long = -1L,
     tag: String? = null
 ): Result<T> {
     // 检查重复任务
     if (TaskManager.isTaskActive(tag)) {
         L.d("Task with tag '$tag' is already running")
         flow?.emit(TaskStatus.Loading(isDuplicate = true))
-        return Result.failure(TaskException(ExceptionManager.getInstance().exceptionHandler.duplicatedCode))
+        return Result.failure(DuplicateException())
     }
 
     // 添加任务标签
@@ -97,7 +101,15 @@ suspend fun <T> startTask(
         // scope -> 我们这里没用到scope，所以可以不写
         // 执行任务
         val result = runCatching {
-            val data = taskBody.invoke()
+            val data = if (timeoutMillis > 0L) {
+                withTimeout(timeoutMillis) {
+                    taskBody()
+                }
+            } else {
+                taskBody()
+            }
+
+
             // 如果是网络响应，验证响应
             if (data is NetResponse) {
                 data.valid()
@@ -116,6 +128,10 @@ suspend fun <T> startTask(
                 L.e("Task failed: $exception")
 
                 val taskException = when (exception) {
+                    is TimeoutCancellationException -> {
+                        L.d("Task timed out")
+                        TimeoutException()
+                    }
                     is CancellationException -> {
                         L.d("Task cancelled")
                         CancelException()

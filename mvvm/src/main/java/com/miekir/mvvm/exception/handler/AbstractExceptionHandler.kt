@@ -14,7 +14,7 @@ abstract class AbstractExceptionHandler {
      * @param t 异常
      * @return 包含错误码和错误信息
      */
-    abstract fun handleException(t: Throwable): TaskException?
+    abstract fun handleException(throwable: Throwable): TaskException?
 
     /**
      * @return 成功的code
@@ -30,6 +30,15 @@ abstract class AbstractExceptionHandler {
      * @return 取消的code
      */
     abstract val cancelCode: Int
+
+    /**
+     * @return 超时的code
+     */
+    abstract val timeoutCode: Int
+
+    /**
+     * @return 重复任务的code
+     */
     abstract val duplicatedCode: Int
 
     /**

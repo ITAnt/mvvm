@@ -3,8 +3,8 @@ package com.miekir.mt.ui.main
 import android.Manifest
 import com.miekir.mt.databinding.ActivityMainBinding
 import com.miekir.mvvm.core.view.base.BasicBindingActivity
-import com.miekir.mvvm.core.view.viewModel
 import com.miekir.mvvm.log.L
+import com.miekir.mvvm.task.core.viewModel
 import com.miekir.mvvm.task.core.withLoadingDialog
 import com.miekir.mvvm.tools.ToastTools
 

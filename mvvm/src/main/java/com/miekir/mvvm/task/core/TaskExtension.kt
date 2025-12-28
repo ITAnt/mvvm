@@ -39,7 +39,10 @@ private val viewModelExceptionHandler = CoroutineExceptionHandler { _, throwable
     L.e("ViewModel coroutine exception: ${throwable.message}")
 }*/
 
-private val globalScope = CoroutineScope(SupervisorJob())
+/**
+ * 这里解释一下为什么用 SupervisorJob()：普通的 Job 只要一个子协程崩溃，所有子协程都会被取消。而 SupervisorJob() 不会，它允许子协程独立运行，一个子协程崩溃不会影响其他子协程。对于全局作用域来说，这个特性很重要——比如“数据同步”的协程崩溃了，不能影响“日志上报”的协程。
+ */
+private val globalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 /**
  * 协程方式实现耗时任务，有无加载框，有无回调都可以自定义

@@ -1,7 +1,6 @@
 package com.miekir.mvvm.core.view.base
 
 import android.os.Bundle
-import android.view.View
 import androidx.databinding.ViewDataBinding
 import androidx.viewbinding.ViewBinding
 
@@ -37,7 +36,9 @@ abstract class BasicBindingActivity<VB : ViewBinding> : BasicActivity() {
             (binding as? ViewDataBinding?)?.lifecycleOwner = this
         }
         setContentView(binding.root)
-        onInit()
+        binding.root.post {
+            onInit()
+        }
     }
 
     override fun onDestroy() {

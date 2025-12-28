@@ -35,9 +35,9 @@ abstract class BasicFragment : Fragment(), IView {
         super.onResume()
         if (firstVisible) {
             firstVisible = false
-            onInit()
             // 解决在navigation下，Fragment刚创建就navigate到一个新的Fragment，旧的Fragment里的LiveData会产生内存泄漏
             view?.post {
+                onInit()
                 val created = try {
                     viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)
                 } catch (e: Exception) {

@@ -7,6 +7,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
 import com.miekir.mvvm.MvvmManager
+import com.miekir.mvvm.context.GlobalContext
 import com.miekir.mvvm.core.view.IView
 import com.miekir.mvvm.core.view.base.BasicActivity
 import com.miekir.mvvm.task.loading.DialogData
@@ -172,16 +173,18 @@ fun IView.withLoadingDialog(
     basicActivity.loadingViewModel.dialogLiveDataList.add(loadingLiveData)
     var realLoading: TaskLoading? = null
     loadingLiveData.observe(basicActivity) {
-        if (it.loadingType == LoadingType.INVISIBLE) {
-            loadingLiveData.removeObservers(basicActivity)
-            basicActivity.loadingViewModel.dialogLiveDataList.remove(loadingLiveData)
-            realLoading?.dismiss()
-        } else {
-            // 显示弹窗
-            realLoading = loadingClazz.getDeclaredConstructor().newInstance()
-            val loading = realLoading
-            if (loading != null) {
-                basicActivity.showLoading(loading, loadingLiveData)
+        GlobalContext.runOnUiThread {
+            if (it.loadingType == LoadingType.INVISIBLE) {
+                loadingLiveData.removeObservers(basicActivity)
+                basicActivity.loadingViewModel.dialogLiveDataList.remove(loadingLiveData)
+                realLoading?.dismiss()
+            } else {
+                // 显示弹窗
+                realLoading = loadingClazz.getDeclaredConstructor().newInstance()
+                val loading = realLoading
+                if (loading != null) {
+                    basicActivity.showLoading(loading, loadingLiveData)
+                }
             }
         }
     }

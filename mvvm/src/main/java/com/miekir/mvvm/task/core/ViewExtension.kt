@@ -1,5 +1,6 @@
 package com.miekir.mvvm.task.core
 
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.MutableLiveData
@@ -154,6 +155,10 @@ fun IView.withLoadingDialog(
     var basicActivity: BasicActivity? = null
     if (this is BasicActivity) {
         basicActivity = this
+    }
+
+    if (this is Fragment) {
+        basicActivity = this.activity as? BasicActivity
     }
 
     // 不需要显示加载框

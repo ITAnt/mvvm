@@ -107,13 +107,12 @@ fun <T> ViewModel.launchModelTask(
                 // 同理，SwipeRefreshLayout的onRefresh里直接赋值binding.srlPhoto.isRefreshing = false后开始请求任务，
                 // 但由于SwipeRefreshLayout会有动画，如果任务结束得很快，到了刷新列表的时候，就会和SwipeRefreshLayout的动画冲突，导致SwipeRefreshLayout卡住，所以应该加上
                 // binding.srlPhoto.isRefreshing = false 和 binding.srlPhoto.isEnabled = false，等完成任务后，再binding.srlPhoto.isEnabled = true
-                taskJob.onResult()
                 successCallback?.invoke(returnTypeObj)
                 resultCallback?.invoke(returnTypeObj, null)
+                taskJob.onResult()
             }
         }.onFailure { cause ->
             withContext(CoroutineName("ViewModel Main Task") + Dispatchers.Main) {
-                taskJob.onResult()
                 // 获取具体错误类型
                 when (cause) {
                     is TimeoutCancellationException -> {
@@ -139,6 +138,7 @@ fun <T> ViewModel.launchModelTask(
                         resultCallback?.invoke(null, exception)
                     }
                 }
+                taskJob.onResult()
             }
         }
         // 成功后立即清理回调引用，防止内存泄漏
@@ -207,14 +207,12 @@ fun <T> launchGlobalTask(
                     (returnTypeObj as NetResponse).valid()
                 }
 
-                taskJob.onResult()
                 successCallback?.invoke(returnTypeObj)
                 resultCallback?.invoke(returnTypeObj, null)
+                taskJob.onResult()
             }
         }.onFailure { cause ->
             withContext(CoroutineName("Global Main Task") + Dispatchers.Main) {
-                taskJob.onResult()
-                // 获取具体错误类型
                 // 获取具体错误类型
                 when (cause) {
                     is TimeoutCancellationException -> {
@@ -240,6 +238,7 @@ fun <T> launchGlobalTask(
                         resultCallback?.invoke(null, exception)
                     }
                 }
+                taskJob.onResult()
             }
         }
         // 成功后立即清理回调引用，防止内存泄漏

@@ -93,16 +93,16 @@ fun <T> ViewModel.launchModelTask(
             } else {
                 taskBody()
             }
+            // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
+            // 注意：在taskBody()里调用网络接口时，不能调用到NetResponse的下一层，且最后的返回值（最后一行的结果）必须是NetResponse
+            // 否则自己需要拿到NetResponse手动调用一下valid()方法，只有这样才能进行有效性校验
+            if (returnTypeObj is NetResponse) {
+                (returnTypeObj as NetResponse).valid()
+            }
             returnTypeObj
         }.onSuccess {returnTypeObj ->
             // 耗时任务完成后，回到主线程
             withContext(CoroutineName("ViewModel Main Task") + Dispatchers.Main) {
-                // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
-                // 注意：在taskBody()里调用网络接口时，不能调用到NetResponse的下一层，且最后的返回值（最后一行的结果）必须是NetResponse
-                // 否则自己需要拿到NetResponse手动调用一下valid()方法，只有这样才能进行有效性校验
-                if (returnTypeObj is NetResponse) {
-                    (returnTypeObj as NetResponse).valid()
-                }
                 // 先调用onResult让dialog消失，再回调结果，因为结果里可能会是RecyclerView的adapter在主线程加载大量数据，导致dialog动画卡住，体验很差。
                 // 同理，SwipeRefreshLayout的onRefresh里直接赋值binding.srlPhoto.isRefreshing = false后开始请求任务，
                 // 但由于SwipeRefreshLayout会有动画，如果任务结束得很快，到了刷新列表的时候，就会和SwipeRefreshLayout的动画冲突，导致SwipeRefreshLayout卡住，所以应该加上
@@ -199,14 +199,13 @@ fun <T> launchGlobalTask(
             } else {
                 taskBody()
             }
+            // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
+            if (returnTypeObj is NetResponse) {
+                (returnTypeObj as NetResponse).valid()
+            }
             returnTypeObj
         }.onSuccess {returnTypeObj ->
             withContext(CoroutineName("Global Main Task") + Dispatchers.Main) {
-                // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
-                if (returnTypeObj is NetResponse) {
-                    (returnTypeObj as NetResponse).valid()
-                }
-
                 successCallback?.invoke(returnTypeObj)
                 resultCallback?.invoke(returnTypeObj, null)
                 taskJob.onResult()

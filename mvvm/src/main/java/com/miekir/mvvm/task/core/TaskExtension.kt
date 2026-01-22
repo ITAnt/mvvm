@@ -23,6 +23,7 @@ import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.cancellation.CancellationException
 
 /*---------------------------------以下为协程实现耗时任务-------------------------------------*/
@@ -51,6 +52,9 @@ private val globalScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
  *
  * @param onResult errorResult为null则表示请求成功
  * @param tag 用于防止重复类型【tag】的任务，只有在继承BaseViewMode的子类中才起作用
+ *
+ * 如果你需要在一个协程里调用一个会阻塞线程、且没有提供 suspend 版本的 API 时，请使用runInterruptible {}包裹taskBody，如：文件系统操作、数据库/JDBC 调用、不支持协程的网络调用、阻塞队列与锁、遗留库或旧版 SDK；
+ * 对于CPU密集型任务应该使用withContext(Dispatchers.Default)将计算任务切换到默认的计算线程池，并通过在循环中调用ensureActive()或yield()来确保取消能够及时响应；
  */
 fun <T> ViewModel.launchModelTask(
     taskBody: suspend () -> T?,
@@ -59,6 +63,7 @@ fun <T> ViewModel.launchModelTask(
     onCancel: (() -> Unit)? = null,
     onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,
     onDuplicate: (() -> Unit)? = null,
+    taskContext: CoroutineContext = CoroutineName("ViewModel IO Task") + Dispatchers.IO,
     timeoutMillis: Long = -1L,
     tag: String? = null): TaskJob {
 
@@ -80,7 +85,6 @@ fun <T> ViewModel.launchModelTask(
         }
     }
 
-    val taskContext = CoroutineName("ViewModel IO Task") + Dispatchers.IO
     var returnTypeObj: T? = null
     val job = viewModelScope.launch(taskContext) {
         // 直接执行任务，异常会被 invokeOnCompletion 捕获
@@ -102,7 +106,7 @@ fun <T> ViewModel.launchModelTask(
     // 使用 invokeOnCompletion 统一处理所有完成情况（失败、取消）
     job.invokeOnCompletion { cause ->
         // 使用全局作用域切换到主线程，确保即使原协程被取消也能执行
-        globalScope.launch(Dispatchers.Main) {
+        viewModelScope.launch(Dispatchers.Main) {
             when (cause) {
                 null -> {
                     // 先调用onResult让dialog消失，再回调结果，因为结果里可能会是RecyclerView的adapter在主线程加载大量数据，导致dialog动画卡住，体验很差。
@@ -165,6 +169,7 @@ fun <T> launchGlobalTask(
     onResult: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = null,
     onDuplicate: (() -> Unit)? = null,
     scope: CoroutineScope = globalScope,
+    taskContext: CoroutineContext = CoroutineName("Global IO Task") + Dispatchers.IO,
     timeoutMillis: Long = -1L,
     tag: String? = null
 ): TaskJob {
@@ -186,7 +191,6 @@ fun <T> launchGlobalTask(
         }
     }
 
-    val taskContext = CoroutineName("Global IO Task") + Dispatchers.IO
     var returnTypeObj: T? = null
     val job = scope.launch(taskContext) {
         // 直接执行任务，异常会被 invokeOnCompletion 捕获
@@ -206,7 +210,7 @@ fun <T> launchGlobalTask(
     // 使用 invokeOnCompletion 统一处理所有完成情况（成功、失败、取消）
     job.invokeOnCompletion { cause ->
         // 使用全局作用域切换到主线程，确保即使原协程被取消也能执行
-        globalScope.launch(Dispatchers.Main) {
+        scope.launch(Dispatchers.Main) {
             when (cause) {
                 null -> {
                     successCallback?.invoke(returnTypeObj)

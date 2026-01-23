@@ -109,7 +109,6 @@ suspend fun <T> startTask(
                 taskBody()
             }
 
-
             // 如果是网络响应，验证响应
             if (data is NetResponse) {
                 data.valid()

@@ -66,12 +66,6 @@ fun <T> ViewModel.launchModelTask(
     taskContext: CoroutineContext = CoroutineName("ViewModel IO Task") + Dispatchers.IO,
     timeoutMillis: Long = -1L,
     tag: String? = null): TaskJob {
-
-    var successCallback: ((result: T?) -> Unit)? = onSuccess
-    var failureCallback: ((code: Int, message: String, taskException: TaskException) -> Unit)? = onFailure
-    var cancelCallback: (() -> Unit)? = onCancel
-    var resultCallback: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = onResult
-
     val taskJob = TaskJob()
     if (!tag.isNullOrBlank()) {
         // 使用 putIfAbsent 保证原子性
@@ -85,75 +79,71 @@ fun <T> ViewModel.launchModelTask(
         }
     }
 
-    var returnTypeObj: T? = null
     val job = viewModelScope.launch(taskContext) {
-        // 直接执行任务，异常会被 invokeOnCompletion 捕获
-        returnTypeObj = if (timeoutMillis > 0L) {
-            withTimeout(timeoutMillis) {
+        val result = runCatching {
+            val taskResult = if (timeoutMillis > 0L) {
+                withTimeout(timeoutMillis) {
+                    taskBody()
+                }
+            } else {
                 taskBody()
             }
-        } else {
-            taskBody()
+            
+            // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
+            // 注意：在taskBody()里调用网络接口时，不能调用到NetResponse的下一层，且最后的返回值（最后一行的结果）必须是NetResponse
+            // 否则自己需要拿到NetResponse手动调用一下valid()方法，只有这样才能进行有效性校验
+            if (taskResult is NetResponse) {
+                taskResult.valid()
+            }
+            taskResult
         }
-        // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
-        // 注意：在taskBody()里调用网络接口时，不能调用到NetResponse的下一层，且最后的返回值（最后一行的结果）必须是NetResponse
-        // 否则自己需要拿到NetResponse手动调用一下valid()方法，只有这样才能进行有效性校验
-        if (returnTypeObj is NetResponse) {
-            (returnTypeObj as NetResponse).valid()
-        }
-    }
-
-    // 使用 invokeOnCompletion 统一处理所有完成情况（失败、取消）
-    job.invokeOnCompletion { cause ->
-        // 使用全局作用域切换到主线程，确保即使原协程被取消也能执行
-        viewModelScope.launch(Dispatchers.Main) {
-            when (cause) {
-                null -> {
+        
+        // 切换到主线程处理回调
+        GlobalContext.runOnUiThread {
+            when {
+                result.isSuccess -> {
+                    val returnTypeObj = result.getOrNull()
                     // 先调用onResult让dialog消失，再回调结果，因为结果里可能会是RecyclerView的adapter在主线程加载大量数据，导致dialog动画卡住，体验很差。
-                    // 同理，SwipeRefreshLayout的onRefresh里直接赋值binding.srlPhoto.isRefreshing = false后开始请求任务，
-                    // 但由于SwipeRefreshLayout会有动画，如果任务结束得很快，到了刷新列表的时候，就会和SwipeRefreshLayout的动画冲突，导致SwipeRefreshLayout卡住，所以应该加上
-                    // binding.srlPhoto.isRefreshing = false 和 binding.srlPhoto.isEnabled = false，等完成任务后，再binding.srlPhoto.isEnabled = true
-                    successCallback?.invoke(returnTypeObj)
-                    resultCallback?.invoke(returnTypeObj, null)
-                    taskJob.onResult()
+                    onSuccess?.invoke(returnTypeObj)
+                    onResult?.invoke(returnTypeObj, null)
                 }
-                is TimeoutCancellationException -> {
-                    // 超时取消
-                    val exception = TimeoutException()
-                    cancelCallback?.invoke()
-                    failureCallback?.invoke(exception.code, exception.detailMessage, exception)
-                    resultCallback?.invoke(null, exception)
-                    taskJob.onResult()
-                }
-                is CancellationException -> {
-                    // 主动取消
-                    val exception = CancelException()
-                    cancelCallback?.invoke()
-                    failureCallback?.invoke(exception.code, exception.detailMessage, exception)
-                    resultCallback?.invoke(null, exception)
-                    taskJob.onResult()
-                }
-                else -> {
-                    // 其他异常
-                    val exception = TaskException(cause)
-                    failureCallback?.invoke(exception.code, exception.detailMessage, exception)
-                    resultCallback?.invoke(null, exception)
-                    taskJob.onResult()
+                result.isFailure -> {
+                    when (val exception = result.exceptionOrNull()) {
+                        is TimeoutCancellationException -> {
+                            // 超时取消
+                            val timeoutException = TimeoutException()
+                            onCancel?.invoke()
+                            onFailure?.invoke(timeoutException.code, timeoutException.detailMessage, timeoutException)
+                            onResult?.invoke(null, timeoutException)
+                        }
+                        is CancellationException -> {
+                            // 主动取消
+                            val cancelException = CancelException()
+                            onCancel?.invoke()
+                            onFailure?.invoke(cancelException.code, cancelException.detailMessage, cancelException)
+                            onResult?.invoke(null, cancelException)
+                        }
+                        is TaskException -> {
+                            // 业务异常
+                            onFailure?.invoke(exception.code, exception.detailMessage, exception)
+                            onResult?.invoke(null, exception)
+                        }
+                        else -> {
+                            // 其他异常
+                            val taskException = TaskException(exception ?: RuntimeException("Unknown error"))
+                            onFailure?.invoke(taskException.code, taskException.detailMessage, taskException)
+                            onResult?.invoke(null, taskException)
+                        }
+                    }
                 }
             }
-            
-            // 清理回调引用，防止内存泄漏
-            cancelCallback = null
-            successCallback = null
-            failureCallback = null
-            resultCallback = null
+            taskJob.onResult()
 
             if (!tag.isNullOrBlank()) {
                 globalTagJobMap.remove(tag)
             }
         }
     }
-
     taskJob.setupJob(job)
     return taskJob
 }
@@ -173,11 +163,6 @@ fun <T> launchGlobalTask(
     timeoutMillis: Long = -1L,
     tag: String? = null
 ): TaskJob {
-    var successCallback: ((result: T?) -> Unit)? = onSuccess
-    var failureCallback: ((code: Int, message: String, taskException: TaskException) -> Unit)? = onFailure
-    var cancelCallback: (() -> Unit)? = onCancel
-    var resultCallback: ((normalResult: T?, errorResult: TaskException?) -> Unit)? = onResult
-
     val taskJob = TaskJob()
     if (!tag.isNullOrBlank()) {
         // 使用 putIfAbsent 保证原子性
@@ -191,62 +176,63 @@ fun <T> launchGlobalTask(
         }
     }
 
-    var returnTypeObj: T? = null
     val job = scope.launch(taskContext) {
-        // 直接执行任务，异常会被 invokeOnCompletion 捕获
-        returnTypeObj = if (timeoutMillis > 0L) {
-            withTimeout(timeoutMillis) {
+        val result = runCatching {
+            val taskResult = if (timeoutMillis > 0L) {
+                withTimeout(timeoutMillis) {
+                    taskBody()
+                }
+            } else {
                 taskBody()
             }
-        } else {
-            taskBody()
+            
+            // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
+            if (taskResult is NetResponse) {
+                taskResult.valid()
+            }
+            taskResult
         }
-        // 调用一下，防止有些不需要使用到结果的接口不断提交失败，及时发现隐藏的重大错误如登录过期等
-        if (returnTypeObj is NetResponse) {
-            (returnTypeObj as NetResponse).valid()
-        }
-    }
-
-    // 使用 invokeOnCompletion 统一处理所有完成情况（成功、失败、取消）
-    job.invokeOnCompletion { cause ->
-        // 使用全局作用域切换到主线程，确保即使原协程被取消也能执行
-        scope.launch(Dispatchers.Main) {
-            when (cause) {
-                null -> {
-                    successCallback?.invoke(returnTypeObj)
-                    resultCallback?.invoke(returnTypeObj, null)
-                    taskJob.onResult()
+        
+        // 切换到主线程处理回调
+        GlobalContext.runOnUiThread {
+            when {
+                result.isSuccess -> {
+                    val returnTypeObj = result.getOrNull()
+                    onSuccess?.invoke(returnTypeObj)
+                    onResult?.invoke(returnTypeObj, null)
                 }
-                is TimeoutCancellationException -> {
-                    // 超时取消
-                    val exception = TimeoutException()
-                    cancelCallback?.invoke()
-                    failureCallback?.invoke(exception.code, exception.detailMessage, exception)
-                    resultCallback?.invoke(null, exception)
-                    taskJob.onResult()
-                }
-                is CancellationException -> {
-                    // 主动取消
-                    val exception = CancelException()
-                    cancelCallback?.invoke()
-                    failureCallback?.invoke(exception.code, exception.detailMessage, exception)
-                    resultCallback?.invoke(null, exception)
-                    taskJob.onResult()
-                }
-                else -> {
-                    // 其他异常
-                    val exception = TaskException(cause)
-                    failureCallback?.invoke(exception.code, exception.detailMessage, exception)
-                    resultCallback?.invoke(null, exception)
-                    taskJob.onResult()
+                result.isFailure -> {
+                    when (val exception = result.exceptionOrNull()) {
+                        is TimeoutCancellationException -> {
+                            // 超时取消
+                            val timeoutException = TimeoutException()
+                            onCancel?.invoke()
+                            onFailure?.invoke(timeoutException.code, timeoutException.detailMessage, timeoutException)
+                            onResult?.invoke(null, timeoutException)
+                        }
+                        is CancellationException -> {
+                            // 主动取消
+                            val cancelException = CancelException()
+                            onCancel?.invoke()
+                            onFailure?.invoke(cancelException.code, cancelException.detailMessage, cancelException)
+                            onResult?.invoke(null, cancelException)
+                        }
+                        is TaskException -> {
+                            // 业务异常
+                            onFailure?.invoke(exception.code, exception.detailMessage, exception)
+                            onResult?.invoke(null, exception)
+                        }
+                        else -> {
+                            // 其他异常
+                            val taskException = TaskException(exception ?: RuntimeException("Unknown error"))
+                            onFailure?.invoke(taskException.code, taskException.detailMessage, taskException)
+                            onResult?.invoke(null, taskException)
+                        }
+                    }
                 }
             }
-            
-            // 清理回调引用，防止内存泄漏
-            cancelCallback = null
-            successCallback = null
-            failureCallback = null
-            resultCallback = null
+
+            taskJob.onResult()
 
             if (!tag.isNullOrBlank()) {
                 globalTagJobMap.remove(tag)

@@ -29,22 +29,22 @@ abstract class BasicFragment : Fragment(), IView {
     /**
      * 在这里添加LiveData的观察者是安全的，不会产生内存泄漏
      */
-    open fun onObserve() {}
+    open fun onPost() {}
 
     override fun onResume() {
         super.onResume()
         if (firstVisible) {
             firstVisible = false
+            onInit()
             // 解决在navigation下，Fragment刚创建就navigate到一个新的Fragment，旧的Fragment里的LiveData会产生内存泄漏
             view?.post {
-                onInit()
                 val created = try {
                     viewLifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.CREATED)
                 } catch (e: Exception) {
                     false
                 }
                 if (created) {
-                    onObserve()
+                    onPost()
                 }
             }
         }

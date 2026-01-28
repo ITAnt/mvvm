@@ -25,6 +25,7 @@ abstract class BasicBindingActivity<VB : ViewBinding> : BasicActivity() {
      * 初始化
      */
     abstract fun onInit()
+    open fun onPost() {}
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,8 +37,10 @@ abstract class BasicBindingActivity<VB : ViewBinding> : BasicActivity() {
             (binding as? ViewDataBinding?)?.lifecycleOwner = this
         }
         setContentView(binding.root)
+        // 注意：surface不能在binding.root.post{}里面进行监听，必须在onCreate里初始化surface的监听，Fragment同
+        onInit()
         binding.root.post {
-            onInit()
+            onPost()
         }
     }
 
